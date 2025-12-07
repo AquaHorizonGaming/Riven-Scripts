@@ -60,6 +60,7 @@ function default_settings() {
   VLAN=""
   SSH="no"
   VERB="no"
+  RIVEN_FRONTEND_ORIGIN=""
   echo_default
 }
 

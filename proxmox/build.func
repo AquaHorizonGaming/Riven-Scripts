@@ -453,6 +453,20 @@ advanced_settings() {
     exit-script
   fi
 
+	# Optional: allow user to specify the external frontend URL / origin.
+	# If left blank, the installer will auto-detect and use http://<CT-IP>:3000.
+	if RIVEN_FRONTEND_ORIGIN=$(whiptail --backtitle "Proxmox VE Helper Scripts" \
+	  --inputbox "Set the external URL you'll use to access the Riven frontend (ORIGIN).\n\nExamples:\n  http://<ct-ip>:3000\n  https://riven.example.com\n\nLeave blank to auto-detect using the CT IP on port 3000." \
+	  15 78 --title "RIVEN FRONTEND ORIGIN" 3>&1 1>&2 2>&3); then
+	  if [ -n "$RIVEN_FRONTEND_ORIGIN" ]; then
+	    echo -e "${DGN}Using Frontend Origin: ${BGN}$RIVEN_FRONTEND_ORIGIN${CL}"
+	  else
+	    echo -e "${DGN}Using Frontend Origin: ${BGN}Auto-detect (CT IP:3000)${CL}"
+	  fi
+	else
+	  exit-script
+	fi
+
   if [[ "$PW" == -password* ]]; then
     if (whiptail --backtitle "Proxmox VE Helper Scripts" --defaultno --title "SSH ACCESS" --yesno "Enable Root SSH Access?" 10 58); then
       SSH="yes"
@@ -557,6 +571,7 @@ build_container() {
   export PASSWORD="$PW"
   export VERBOSE="$VERB"
   export SSH_ROOT="${SSH}"
+  export RIVEN_FRONTEND_ORIGIN
   export CTID="$CT_ID"
   export CTTYPE="$CT_TYPE"
   export PCT_OSTYPE="$var_os"

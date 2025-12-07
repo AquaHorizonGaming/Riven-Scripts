@@ -20,7 +20,7 @@ export DEBIAN_FRONTEND=noninteractive
 msg_info "Installing Dependencies"
 $STD apt-get update
 $STD apt-get install -y \
-	curl sudo mc git ffmpeg \
+	curl sudo mc git ffmpeg vim \
 	python3 python3-venv python3-dev build-essential libffi-dev libpq-dev libfuse3-dev pkg-config \
 	fuse3 libcap2-bin ca-certificates openssl \
 	postgresql postgresql-contrib postgresql-client
@@ -202,17 +202,29 @@ msg_ok "Installed Riven frontend"
 msg_info "Configuring Riven frontend environment"
 AUTH_SECRET=$(openssl rand -base64 32)
 
-if [ ! -f "$FRONTEND_ENV" ]; then
-  cat <<EOF >"$FRONTEND_ENV"
-DATABASE_URL=/riven/data/riven.db
-BACKEND_URL=http://127.0.0.1:8080
-BACKEND_API_KEY=$RIVEN_API_KEY
-AUTH_SECRET=$AUTH_SECRET
-ORIGIN=http://localhost:3000
-EOF
-  chown root:root "$FRONTEND_ENV"
-  chmod 600 "$FRONTEND_ENV"
-fi
+	# If the host script provided a specific origin (e.g. a reverse proxy URL), use it.
+	# Otherwise, fall back to auto-detecting the CT's primary IPv4 and using :3000.
+	if [ -n "${RIVEN_FRONTEND_ORIGIN:-}" ]; then
+	  FRONTEND_ORIGIN_DEFAULT="$RIVEN_FRONTEND_ORIGIN"
+	else
+	  CT_IP=$(ip -4 -o addr show scope global 2>/dev/null | awk 'NR==1{print $4}' | cut -d/ -f1)
+	  if [ -z "$CT_IP" ]; then
+	    CT_IP="127.0.0.1"
+	  fi
+	  FRONTEND_ORIGIN_DEFAULT="http://$CT_IP:3000"
+	fi
+
+	if [ ! -f "$FRONTEND_ENV" ]; then
+	  cat <<EOF >"$FRONTEND_ENV"
+	DATABASE_URL=/riven/data/riven.db
+	BACKEND_URL=http://127.0.0.1:8080
+	BACKEND_API_KEY=$RIVEN_API_KEY
+	AUTH_SECRET=$AUTH_SECRET
+	ORIGIN=$FRONTEND_ORIGIN_DEFAULT
+	EOF
+	  chown root:root "$FRONTEND_ENV"
+	  chmod 600 "$FRONTEND_ENV"
+	fi
 msg_ok "Configured Riven frontend environment"
 
 msg_info "Creating systemd service for Riven frontend"
@@ -228,9 +240,6 @@ User=riven
 Group=riven
 WorkingDirectory=/opt/riven-frontend
 EnvironmentFile=/etc/riven/frontend.env
-Environment=PROTOCOL_HEADER=x-forwarded-proto
-Environment=HOST_HEADER=x-forwarded-host
-Environment=ORIGIN=http://localhost:3000
 ExecStart=/usr/bin/node /opt/riven-frontend/build
 Restart=on-failure
 RestartSec=5
