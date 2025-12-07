@@ -62,13 +62,22 @@ msg_info "Creating Riven user and directories"
 if ! id -u riven >/dev/null 2>&1; then
   useradd -r -d /riven -s /usr/sbin/nologin riven || true
 fi
-  mkdir -p /riven /riven/data /mount /opt/riven-frontend /etc/riven
-  chown -R riven:riven /riven /riven/data /mount /opt/riven-frontend
-  chmod 755 /riven /riven/data /mount || true
-  # Cache directory for RivenVFS (not shared across LXCs)
-  mkdir -p /dev/shm/riven-cache
-  chown riven:riven /dev/shm/riven-cache || true
-  chmod 700 /dev/shm/riven-cache || true
+
+# Core application directories
+mkdir -p /riven /riven/data /mount /mnt/riven /opt/riven-frontend /etc/riven
+chown -R riven:riven /riven /riven/data /mount /mnt/riven /opt/riven-frontend
+
+# Make the library-related mountpoints world-readable so media from other
+# containers (e.g. Plex/Jellyfin/Emby) can be shared via /mnt/riven.
+chmod 755 /riven /mount /mnt/riven || true
+
+# Keep internal data more restricted; only the riven user should need this.
+chmod 700 /riven/data || true
+
+# Cache directory for RivenVFS (not shared across LXCs)
+mkdir -p /dev/shm/riven-cache
+chown riven:riven /dev/shm/riven-cache || true
+chmod 700 /dev/shm/riven-cache || true
 msg_ok "Created Riven user and directories"
 
 msg_info "Installing uv package manager"

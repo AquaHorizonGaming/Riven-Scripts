@@ -74,5 +74,12 @@ build_container
 description
 
 msg_ok "Completed Successfully!\n"
-echo -e "${APP} backend should be reachable at:  ${BL}http://<CT-IP>:8080${CL}"
-echo -e "${APP} frontend should be reachable at: ${BL}http://<CT-IP>:3000${CL}\n"
+echo -e "${APP} backend should be reachable at:  ${BL}http://<CT-IP>:8080/scalar${CL}"
+echo -e "${APP} frontend should be reachable at: ${BL}http://<CT-IP>:3000${CL}\n\n"
+echo -e "To edit the backend settings directly, they are accessible at ${BL}/riven/src/data/settings.json${CL}\n"
+
+echo -e "To share a host media directory with this Riven container, run on the Proxmox host:"
+echo -e "  ${BL}pct set <RIVEN_CT_ID> -mp0 /path/to/media,mp=/mnt/riven${CL}"
+echo -e "Then add the same host path into your media server container (Plex/Jellyfin/Emby/etc):"
+echo -e "  ${BL}pct set <MEDIA_CT_ID> -mp1 /path/to/media,mp=/mnt/riven${CL}\n"
+echo -e "Ensure the host media directory is world-readable (e.g. ${BL}chmod 755 /path/to/media${CL}) so the riven user can read files even if they are owned by another user like plex.\n"
