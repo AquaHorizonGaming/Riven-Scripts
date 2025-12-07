@@ -85,18 +85,33 @@ msg_ok "Installed uv"
 
 msg_info "Installing Riven backend"
 if [ ! -d /riven/src ]; then
-  git clone https://github.com/rivenmedia/riven.git /riven/src >/dev/null 2>&1 || {
-    msg_error "Failed to clone Riven backend repository"
-    exit 1
-  }
+	git clone https://github.com/rivenmedia/riven.git /riven/src >/dev/null 2>&1 || {
+		msg_error "Failed to clone Riven backend repository"
+		exit 1
+	}
 else
-  cd /riven/src
-  git pull --rebase >/dev/null 2>&1 || true
+	cd /riven/src
+	git pull --rebase >/dev/null 2>&1 || true
 fi
 cd /riven/src
-UV_SYSTEM_PYTHON=true $UV_BIN sync --no-dev --frozen >/dev/null 2>&1 || \
-	UV_SYSTEM_PYTHON=true $UV_BIN sync --no-dev >/dev/null 2>&1 || {
-	msg_error "Failed to install Riven backend dependencies with uv (system Python)"
+# Ensure project virtual environment exists and is owned by riven
+if [ -d .venv ]; then
+	chown -R riven:riven .venv || true
+else
+	sudo -u riven -H "$UV_BIN" venv >/dev/null 2>&1 || {
+		msg_error "Failed to create Python virtual environment with uv"
+		exit 1
+	}
+fi
+
+VENV_PY_BIN="/riven/src/.venv/bin/python3"
+if [ -x "$VENV_PY_BIN" ]; then
+	setcap cap_sys_admin+ep "$VENV_PY_BIN" 2>/dev/null || true
+fi
+
+sudo -u riven -H "$UV_BIN" sync --no-dev --frozen >/dev/null 2>&1 || \
+	sudo -u riven -H "$UV_BIN" sync --no-dev >/dev/null 2>&1 || {
+	msg_error "Failed to install Riven backend dependencies with uv"
 	exit 1
 }
 chown -R riven:riven /riven
@@ -136,7 +151,7 @@ Group=riven
 WorkingDirectory=/riven/src
 EnvironmentFile=/etc/riven/backend.env
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
-ExecStart=/usr/bin/python3 src/main.py
+ExecStart=/usr/local/bin/uv run python src/main.py
 Restart=on-failure
 RestartSec=5
 
