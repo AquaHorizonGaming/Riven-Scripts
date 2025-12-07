@@ -27,11 +27,7 @@ $STD apt-get install -y \
 msg_ok "Installed Dependencies"
 
 msg_info "Configuring FUSE"
-if grep -qE '^\s*#?\s*user_allow_other' /etc/fuse.conf 2>/dev/null; then
-  sed -i 's/^\s*#\s*user_allow_other/user_allow_other/' /etc/fuse.conf
-else
-  echo 'user_allow_other' >> /etc/fuse.conf
-fi
+echo 'user_allow_other' > /etc/fuse.conf
 msg_ok "Configured FUSE"
 
 msg_info "Configuring Python capabilities for FUSE"
@@ -139,7 +135,7 @@ if [ ! -f "$BACKEND_ENV" ]; then
 RIVEN_API_KEY=$RIVEN_API_KEY
 RIVEN_DATABASE_HOST=postgresql+psycopg2://postgres:postgres@127.0.0.1/riven
 RIVEN_FILESYSTEM_MOUNT_PATH=/mount
-RIVEN_LIBRARY_PATH=/mnt/riven
+RIVEN_UPDATERS_LIBRARY_PATH=/mnt/riven
 RIVEN_FILESYSTEM_CACHE_DIR=/dev/shm/riven-cache
 EOF
   chown riven:riven "$BACKEND_ENV"
