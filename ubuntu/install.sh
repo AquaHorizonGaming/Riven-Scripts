@@ -1,102 +1,63 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# installer-version: 2026-01-04T02:05Z
-
-############################################
-# CONFIG
-############################################
+# ===== CONFIG =====
 DOWNLOAD_DIR="/opt/riven"
 COMPOSE_URL="https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/ubuntu/docker-compose.yml"
 ENV_FILE=".env"
 
-############################################
-# OUTPUT
-############################################
-GREEN="\033[1;32m"
-RED="\033[1;31m"
-BLUE="\033[1;34m"
-YELLOW="\033[1;33m"
-NC="\033[0m"
+# ===== OUTPUT =====
+log()  { echo "[✔] $1"; }
+step() { echo "▶ $1"; }
+err()  { echo "[✖] $1"; exit 1; }
 
-log()  { echo -e "${GREEN}[✔]${NC} $1"; }
-step() { echo -e "${BLUE}▶${NC} $1"; }
-warn() { echo -e "${YELLOW}[!]${NC} $1"; }
-err()  { echo -e "${RED}[✖]${NC} $1"; exit 1; }
-
-############################################
-# PRECHECKS
-############################################
-[[ $EUID -eq 0 ]] || err "Run as root (sudo)"
-[[ "$(uname -s)" == "Linux" ]] || err "Linux required"
-
+# ===== PRECHECK =====
+[[ $EUID -eq 0 ]] || err "Run as root"
 . /etc/os-release || err "Cannot detect OS"
 [[ "$ID" == "ubuntu" ]] || err "Ubuntu required"
 
-############################################
-# COMMAND DETECTION
-############################################
-REQUIRED_CMDS=(curl openssl gpg lsb_release)
-MISSING=false
-
-for cmd in "${REQUIRED_CMDS[@]}"; do
-  if ! command -v "$cmd" >/dev/null 2>&1; then
-    MISSING=true
-  fi
-done
-
-if $MISSING; then
-  step "Installing missing system commands"
-  apt-get update
-  apt-get install -y \
-    curl \
-    ca-certificates \
-    gnupg \
-    lsb-release \
-    openssl
-else
-  log "All required system commands detected — skipping apt"
-fi
-
-############################################
-# TIMEZONE (NON-INTERACTIVE SAFE)
-############################################
+# ===== TIMEZONE (AUTO, NO PROMPTS) =====
 step "Detecting timezone"
-
-DEFAULT_TZ="$(timedatectl show --property=Timezone --value 2>/dev/null || true)"
-DEFAULT_TZ="${DEFAULT_TZ:-UTC}"
-
-if [[ ! -t 0 ]]; then
-  TZ_SELECTED="$DEFAULT_TZ"
-else
-  echo
-  echo -e "Detected timezone: ${GREEN}$DEFAULT_TZ${NC}"
-  read -rp "Press ENTER to accept or type another: " USER_TZ
-  TZ_SELECTED="${USER_TZ:-$DEFAULT_TZ}"
-fi
-
+TZ_SELECTED="$(timedatectl show --property=Timezone --value 2>/dev/null || echo UTC)"
 timedatectl set-timezone "$TZ_SELECTED"
 log "Timezone set to $TZ_SELECTED"
 
-############################################
-# DOWNLOAD DIR
-############################################
-step "Preparing download directory"
+# ===== ENSURE CURL =====
+if ! command -v curl >/dev/null 2>&1; then
+  step "Installing curl"
+  apt-get update
+  apt-get install -y curl ca-certificates
+fi
+
+# ===== ENSURE DOCKER =====
+if ! command -v docker >/dev/null 2>&1; then
+  step "Installing Docker"
+  apt-get update
+  apt-get install -y ca-certificates gnupg lsb-release
+
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+> /etc/apt/sources.list.d/docker.list
+
+  apt-get update
+  apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  systemctl enable docker
+fi
+
+# ===== SETUP DIR =====
+step "Preparing directory"
 mkdir -p "$DOWNLOAD_DIR"
 cd "$DOWNLOAD_DIR"
 
-############################################
-# DOWNLOAD COMPOSE
-############################################
+# ===== DOWNLOAD COMPOSE =====
 step "Downloading docker-compose.yml"
-log "Using COMPOSE_URL=$COMPOSE_URL"
+curl -fsSL "$COMPOSE_URL" -o docker-compose.yml || err "Compose download failed"
 
-curl -fsSL "$COMPOSE_URL" -o docker-compose.yml \
-  || err "Failed to download docker-compose.yml"
-
-############################################
-# ENV FILE
-############################################
+# ===== GENERATE .ENV =====
 if [[ ! -f "$ENV_FILE" ]]; then
   step "Generating .env"
 
@@ -104,66 +65,24 @@ if [[ ! -f "$ENV_FILE" ]]; then
   BACKEND_API_KEY="$(openssl rand -hex 32)"
   AUTH_SECRET="$(openssl rand -hex 32)"
 
-cat > "$ENV_FILE" <<EOF
-TZ=$TZ_SELECTED
+  printf "TZ=%s\n\nPOSTGRES_DB=riven\nPOSTGRES_USER=postgres\nPOSTGRES_PASSWORD=%s\n\nBACKEND_API_KEY=%s\nAUTH_SECRET=%s\n" \
+    "$TZ_SELECTED" \
+    "$POSTGRES_PASSWORD" \
+    "$BACKEND_API_KEY" \
+    "$AUTH_SECRET" > "$ENV_FILE"
 
-POSTGRES_DB=riven
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-
-BACKEND_API_KEY=$BACKEND_API_KEY
-AUTH_SECRET=$AUTH_SECRET
-EOF
-
-  warn "SAVE $DOWNLOAD_DIR/.env — it contains secrets"
-else
-  log ".env already exists — leaving unchanged"
+  log ".env created"
 fi
 
-############################################
-# DOCKER
-############################################
-step "Checking Docker"
+# ===== MOUNTS =====
+step "Creating mount paths"
+mkdir -p /mnt/riven/backend /mnt/riven/mount
+chown -R 1000:1000 /mnt/riven
 
-if ! command -v docker >/dev/null 2>&1; then
-  step "Installing Docker"
+# ===== SYSTEMD SERVICE =====
+step "Creating mount service"
 
-  install -m 0755 -d /etc/apt/keyrings
-
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
-    | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-  chmod a+r /etc/apt/keyrings/docker.gpg
-
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-https://download.docker.com/linux/ubuntu \
-$(lsb_release -cs) stable" \
-    > /etc/apt/sources.list.d/docker.list
-
-  apt-get update
-  apt-get install -y \
-    docker-ce docker-ce-cli containerd.io \
-    docker-buildx-plugin docker-compose-plugin
-
-  systemctl enable docker
-else
-  log "Docker already installed"
-fi
-
-############################################
-# MOUNTS
-############################################
-step "Creating mount directories"
-
-mkdir -p /mnt/riven/backend /mnt/riven/mount /mnt/jellyfin /mnt/plex /mnt/emby
-chown -R 1000:1000 /mnt/riven /mnt/jellyfin /mnt/plex /mnt/emby
-
-############################################
-# SYSTEMD SHARED MOUNT
-############################################
-step "Configuring shared mount systemd service"
-
-cat > /etc/systemd/system/riven-bind-shared.service <<EOF
-[Unit]
+printf "[Unit]
 Description=Make Riven mount bind shared
 After=local-fs.target
 Before=docker.service
@@ -176,32 +95,19 @@ RemainAfterExit=yes
 
 [Install]
 WantedBy=multi-user.target
-EOF
+" > /etc/systemd/system/riven-bind-shared.service
 
 systemctl daemon-reload
 systemctl enable --now riven-bind-shared.service
 
-############################################
-# VERIFY MOUNT
-############################################
-step "Verifying mount propagation"
-findmnt -T /mnt/riven/mount -o PROPAGATION | grep -q shared \
-  || err "Mount is NOT shared"
-
-############################################
-# START STACK
-############################################
+# ===== START STACK =====
 step "Starting Docker"
 systemctl start docker
 
-step "Starting Riven stack"
+step "Starting containers"
 docker compose pull
 docker compose up -d
 
-############################################
-# DONE
-############################################
-log "Riven installed successfully"
-log "Timezone: $TZ_SELECTED"
+log "Riven install complete"
 log "Compose: $DOWNLOAD_DIR/docker-compose.yml"
 log "Env: $DOWNLOAD_DIR/.env"
