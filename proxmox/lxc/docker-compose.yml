@@ -49,7 +49,7 @@ services:
       riven-db:
         condition: service_healthy
     healthcheck:
-      test: curl -s http://localhost:8080 >/dev/null || exit 1
+      test: ["CMD-SHELL", "curl -s http://localhost:8080 >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -73,6 +73,11 @@ services:
     depends_on:
       riven:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:3000 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
 
   jellyfin:
     image: jellyfin/jellyfin
