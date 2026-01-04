@@ -14,7 +14,7 @@ SUPPORTED SYSTEMS
 - Headless servers
 - Advanced WSL setups
 
-WHAT THIS SCRIPT DOES
+## WHAT THIS SCRIPT DOES
 
 SYSTEM & DOCKER
 - Installs Docker and Docker Compose ONLY if missing
