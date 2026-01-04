@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   riven-db:
     image: postgres:17-alpine
@@ -51,7 +49,7 @@ services:
       riven-db:
         condition: service_healthy
     healthcheck:
-      test: curl -s http://localhost:8080 >/dev/null || exit 1
+      test: ["CMD-SHELL", "curl -s http://localhost:8080 >/dev/null || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -75,6 +73,53 @@ services:
     depends_on:
       riven:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:3000 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    profiles: ["jellyfin"]
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /mnt/riven/mount:/media:ro
+      - /mnt/jellyfin:/config
+
+  plex:
+    image: lscr.io/linuxserver/plex
+    container_name: plex
+    profiles: ["plex"]
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - VERSION=docker
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /mnt/riven/mount:/media:ro
+      - /mnt/plex:/config
+
+  emby:
+    image: emby/embyserver
+    container_name: emby
+    profiles: ["emby"]
+    restart: unless-stopped
+    ports:
+      - "8097:8096"
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /mnt/riven/mount:/media:ro
+      - /mnt/emby:/config
 
 volumes:
   riven-frontend-data:
