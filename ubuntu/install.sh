@@ -5,7 +5,7 @@ set -euo pipefail
 # CONFIG
 ############################################
 DOWNLOAD_DIR="/opt/riven"
-COMPOSE_URL="https://raw.githubusercontent.com/AquaHorizonGaming/distributables/refs/heads/main/ubuntu/docker-compose.yml"
+COMPOSE_URL="https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/ubuntu/docker-compose.yml"
 ENV_FILE=".env"
 
 ############################################
