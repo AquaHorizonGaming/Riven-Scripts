@@ -67,7 +67,7 @@ services:
       BACKEND_URL: http://riven:8080
       BACKEND_API_KEY: ${BACKEND_API_KEY}
       AUTH_SECRET: ${AUTH_SECRET}
-      ORIGIN: http://localhost:3000
+      ORIGIN: ${ORIGIN}
     volumes:
       - riven-frontend-data:/riven/data
     depends_on:
