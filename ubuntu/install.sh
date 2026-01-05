@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
 ############################################
 # CONFIG
@@ -7,6 +7,7 @@ set -e
 INSTALL_DIR="/opt/riven"
 COMPOSE_URL="https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/ubuntu/docker-compose.yml"
 FRONTEND_PORT="3000"
+DEFAULT_ORIGIN="http://localhost:3000"
 
 ############################################
 # OUTPUT HELPERS
@@ -22,6 +23,13 @@ warn() { echo "[!] $1"; }
 fail() { echo "[✖] $1"; exit 1; }
 
 ############################################
+# URL VALIDATION
+############################################
+is_valid_url() {
+  [[ "$1" =~ ^https?:// ]]
+}
+
+############################################
 # PRECHECKS
 ############################################
 [ "$(id -u)" -eq 0 ] || fail "Run this script as root (sudo)"
@@ -29,7 +37,7 @@ fail() { echo "[✖] $1"; exit 1; }
 [ "$ID" = "ubuntu" ] || fail "Ubuntu is required"
 
 ############################################
-# TIMEZONE (INTERACTIVE, SAFE)
+# TIMEZONE
 ############################################
 banner "Timezone Configuration"
 
@@ -47,7 +55,7 @@ timedatectl set-timezone "$TZ_SELECTED"
 ok "Timezone set to $TZ_SELECTED"
 
 ############################################
-# DEPENDENCIES (ONLY IF MISSING)
+# DEPENDENCIES
 ############################################
 banner "Dependency Check"
 
@@ -67,9 +75,9 @@ else
 fi
 
 ############################################
-# DOCKER INSTALL (ONLY IF MISSING)
+# DOCKER
 ############################################
-banner "Docker"
+banner "Docker Installation"
 
 if ! command -v docker >/dev/null; then
   warn "Docker not detected — installing"
@@ -91,7 +99,7 @@ else
 fi
 
 ############################################
-# DOCKER IPv4 ONLY (NO SYSTEM IPV6 CHANGES)
+# DOCKER IPv4 ONLY
 ############################################
 banner "Docker IPv4 Configuration"
 
@@ -104,10 +112,10 @@ cat >/etc/docker/daemon.json <<EOF
 EOF
 
 systemctl restart docker
-ok "Docker configured to use IPv4 only"
+ok "Docker configured for IPv4 only"
 
 ############################################
-# FILESYSTEM LAYOUT
+# FILESYSTEM
 ############################################
 banner "Filesystem Setup"
 
@@ -118,12 +126,12 @@ mkdir -p \
 
 chown -R 1000:1000 /mnt/riven || true
 
-ok "Backend data path: /mnt/riven/backend"
-ok "Media mount path:  /mnt/riven/mount"
-ok "Compose directory: $INSTALL_DIR"
+ok "Backend path: /mnt/riven/backend"
+ok "Mount path:   /mnt/riven/mount"
+ok "Install dir:  $INSTALL_DIR"
 
 ############################################
-# MOUNT PROPAGATION (rshared)
+# MOUNT PROPAGATION
 ############################################
 banner "Mount Propagation (rshared)"
 
@@ -145,7 +153,35 @@ EOF
 
 systemctl daemon-reload
 systemctl enable --now riven-bind-shared.service
-ok "Shared mount enabled"
+ok "Mount propagation enabled"
+
+############################################
+# ORIGIN / REVERSE PROXY
+############################################
+banner "Frontend Origin Configuration"
+
+ORIGIN_SELECTED="$DEFAULT_ORIGIN"
+
+if [ -t 0 ]; then
+  read -rp "Are you using a reverse proxy? (y/N): " USE_PROXY
+  USE_PROXY="${USE_PROXY,,}"
+
+  if [[ "$USE_PROXY" == "y" || "$USE_PROXY" == "yes" ]]; then
+    while true; do
+      read -rp "Enter public frontend URL (http:// or https://): " ORIGIN_INPUT
+      if is_valid_url "$ORIGIN_INPUT"; then
+        ORIGIN_SELECTED="$ORIGIN_INPUT"
+        break
+      else
+        warn "Invalid URL — must start with http:// or https://"
+      fi
+    done
+  fi
+else
+  warn "Non-interactive shell — defaulting ORIGIN"
+fi
+
+ok "ORIGIN set to: $ORIGIN_SELECTED"
 
 ############################################
 # RIVEN DEPLOYMENT
@@ -160,6 +196,7 @@ if [ ! -f .env ]; then
   warn ".env not found — generating one (SAVE THIS FILE)"
   cat > .env <<EOF
 TZ=$TZ_SELECTED
+ORIGIN=$ORIGIN_SELECTED
 POSTGRES_DB=riven
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
@@ -174,7 +211,7 @@ docker compose pull
 docker compose up -d
 
 ############################################
-# VERIFY + RECOVER CONTAINERS
+# HEALTH CHECK
 ############################################
 banner "Container Health Check"
 
@@ -188,10 +225,10 @@ sleep 5
 
 for c in "${EXPECTED_CONTAINERS[@]}"; do
   if ! docker ps --format '{{.Names}}' | grep -qx "$c"; then
-    warn "Container $c not running — attempting restart"
+    warn "Container $c not running — restarting"
     docker compose up -d "$c" || warn "Failed to start $c"
   else
-    ok "Container $c is running"
+    ok "$c is running"
   fi
 done
 
@@ -201,27 +238,24 @@ done
 SERVER_IP="$(ip route get 1.1.1.1 2>/dev/null | awk '{print $7; exit}')"
 [ -z "$SERVER_IP" ] && SERVER_IP="SERVER_IP"
 
+echo
 echo "⚠️  REQUIRED CONFIGURATION (DO NOT SKIP)"
 echo
-echo "• You MUST edit the Riven configuration file:"
+echo "• Edit:"
 echo "  /mnt/riven/backend/settings.json"
 echo
-echo "• If you do NOT:"
-echo "    - Add at least ONE scraper"
-echo "    - Configure at least ONE media server (Plex / Jellyfin / Emby)"
+echo "• You MUST configure:"
+echo "  - At least ONE scraper"
+echo "  - At least ONE media server (Plex / Jellyfin / Emby)"
 echo
-echo "❌ RIVEN WILL NOT WORK"
-echo
-echo "The backend will start, but NO content will appear and"
-echo "scraping will silently fail until this is configured."
-echo
-echo "• Movies / TV / Anime will appear in:"
+echo "• Media output path:"
 echo "  /mnt/riven/mount"
 echo
-echo "• Docker Compose location:"
-echo "  /opt/riven/docker-compose.yml"
+echo "• Docker Compose:"
+echo "  $INSTALL_DIR/docker-compose.yml"
 echo
-echo "• Frontend is live at:"
-echo "  http://${SERVER_IP}:${FRONTEND_PORT}"
+echo "• Frontend access:"
+echo "  $ORIGIN_SELECTED"
 echo
+
 ok "Riven installation complete"
