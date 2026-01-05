@@ -11,12 +11,17 @@ LIBRARY_PATH="/mnt/riven/backend"
 
 ############################################
 # HELPERS
-############################################
+# banner prints a framed banner that displays the provided message.
 banner(){ echo -e "\n========================================\n $1\n========================================"; }
+# ok prints a success message prefixed with a checkmark and the provided text.
 ok(){ echo "[✔] $1"; }
+# warn prints a warning message prefixed with "[!]" followed by the provided text.
 warn(){ echo "[!] $1"; }
+# fail prints an error message prefixed with "[✖]" and exits the script with status 1.
 fail(){ echo "[✖] $1"; exit 1; }
 
+# set_env updates or appends a key=value pair in the .env file.
+# key is the variable name to set; value is the value to assign. If the key exists its line is replaced, otherwise a new line is appended.
 set_env() {
   local key="$1" value="$2"
   if grep -q "^${key}=" .env 2>/dev/null; then
@@ -26,6 +31,7 @@ set_env() {
   fi
 }
 
+# require_non_empty prompts repeatedly with the given prompt until the user provides a non-empty value, then echoes that value.
 require_non_empty() {
   local prompt="$1" value
   while true; do
@@ -42,7 +48,7 @@ require_non_empty() {
 # - http/https
 # - domain with TLD OR localhost OR IPv4
 # - optional :port
-# - optional /path
+# require_url prompts for a URL using the given prompt, validates that it is http:// or https:// with a hostname (including TLD), `localhost`, or IPv4 address and optional port/path, echoes the validated URL, and repeats until a valid URL is entered.
 require_url() {
   local prompt="$1" value
   local regex='^https?://([a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|localhost|([0-9]{1,3}\.){3}[0-9]{1,3})(:[0-9]{1,5})?(/.*)?$'
@@ -56,6 +62,7 @@ require_url() {
   done
 }
 
+# wait_for_url waits for the given named URL to become reachable by polling until the optional timeout (in seconds) is reached; on timeout it fails and exits with status 1.
 wait_for_url() {
   local name="$1" url="$2" max_seconds="${3:-300}"
   local waited=0
