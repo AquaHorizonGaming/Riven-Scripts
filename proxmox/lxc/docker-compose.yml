@@ -1,0 +1,127 @@
+services:
+  riven-db:
+    image: postgres:17-alpine
+    container_name: riven-db
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - riven-pg-data:/var/lib/postgresql/data/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  riven:
+    image: spoked/riven:dev
+    container_name: riven
+    restart: unless-stopped
+    shm_size: 1024m
+    ports:
+      - "8080:8080"
+    tty: true
+    cap_add:
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    devices:
+      - /dev/fuse
+    env_file: [.env]
+    environment:
+      TZ: ${TZ}
+      PUID: 1000
+      PGID: 1000
+      RIVEN_FORCE_ENV: "true"
+      RIVEN_API_KEY: ${BACKEND_API_KEY}
+      RIVEN_DATABASE_HOST: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@riven-db:5432/${POSTGRES_DB}
+      RIVEN_FILESYSTEM_MOUNT_PATH: /mount
+      # Unified host storage layout uses /srv/riven; inside the container we point updaters at /mount
+      RIVEN_UPDATERS_LIBRARY_PATH: /mount
+      RIVEN_FILESYSTEM_CACHE_DIR: /dev/shm/riven-cache
+    volumes:
+      - /srv/riven/backend:/riven/data
+      - /srv/riven/mount:/mount:rshared
+    depends_on:
+      riven-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8080 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  riven-frontend:
+    image: spoked/riven-frontend:dev
+    container_name: riven-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: [.env]
+    environment:
+      TZ: ${TZ}
+      DATABASE_URL: /riven/data/riven.db
+      BACKEND_URL: http://riven:8080
+      BACKEND_API_KEY: ${BACKEND_API_KEY}
+      AUTH_SECRET: ${AUTH_SECRET}
+      ORIGIN: http://localhost:3000
+    volumes:
+      - riven-frontend-data:/riven/data
+    depends_on:
+      riven:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:3000 >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  jellyfin:
+    image: jellyfin/jellyfin
+    container_name: jellyfin
+    profiles: ["jellyfin"]
+    restart: unless-stopped
+    ports:
+      - "8096:8096"
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /srv/riven/mount:/media:ro
+      - /srv/riven/media/jellyfin:/config
+
+  plex:
+    image: lscr.io/linuxserver/plex
+    container_name: plex
+    profiles: ["plex"]
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - VERSION=docker
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /srv/riven/mount:/media:ro
+      - /srv/riven/media/plex:/config
+
+  emby:
+    image: emby/embyserver
+    container_name: emby
+    profiles: ["emby"]
+    restart: unless-stopped
+    ports:
+      - "8097:8096"
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - /srv/riven/mount:/media:ro
+      - /srv/riven/media/emby:/config
+
+volumes:
+  riven-frontend-data:
+  riven-pg-data:
