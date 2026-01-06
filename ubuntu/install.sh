@@ -274,3 +274,4 @@ docker compose up -d riven-db riven riven-frontend
 banner "DONE"
 ok "Frontend: http://localhost:3000"
 ok "Backend:  http://localhost:8080"
+ok "Riven Started"
