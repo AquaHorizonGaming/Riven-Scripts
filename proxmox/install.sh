@@ -6,7 +6,7 @@ set -euo pipefail
 # Run on Proxmox host as root
 #
 # One-liner supported:
-# bash -c "$(wget -qLO - https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/proxmox/install.sh)"
+# bash -c "$(wget -qLO - https://raw.githubusercontent.com/AquaHorizonGaming/Riven-Scripts/main/proxmox/install.sh)"
 ###############################################################################
 
 [[ "$EUID" -ne 0 ]] && { echo "ERROR: Run as root on Proxmox host"; exit 1; }
