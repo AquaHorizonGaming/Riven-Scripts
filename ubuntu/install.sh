@@ -492,9 +492,9 @@ echo "🗄️ Database"
 echo "  • Postgres DB:        riven"
 echo "  • User:               postgres"
 echo
-echo "  • POSTGRES PASSWORD:      "$POSTGRES_PASSWORD"
-echo "  • BACKEND API KEY:      "$BACKEND_API_KEY"
-echo "  • AUTH SECRET:      "$AUTH_SECRET"
+echo "  • POSTGRES PASSWORD:      $POSTGRES_PASSWORD"
+echo "  • BACKEND API KEY:      $BACKEND_API_KEY"
+echo "  • AUTH SECRET:      $AUTH_SECRET"
 
 
 
