@@ -131,6 +131,54 @@ ok "Filesystem ready (owner: $TARGET_UID:$TARGET_GID)"
 
 
 ############################################
+# RIVEN rshared MOUNT MODULE (REQUIRED)
+############################################
+ensure_riven_rshared_mount() {
+  local MOUNT_PATH="/mnt/riven/mount"
+  local SERVICE_NAME="riven-bind-shared.service"
+
+  banner "Ensuring rshared mount for Riven"
+
+  mkdir -p "$MOUNT_PATH"
+
+  # If already shared, do nothing
+  if findmnt -no PROPAGATION "$MOUNT_PATH" 2>/dev/null | grep -q shared; then
+    ok "Mount already rshared"
+    return
+  fi
+
+  warn "Mount is not rshared — installing systemd unit"
+
+  cat >/etc/systemd/system/$SERVICE_NAME <<EOF
+[Unit]
+Description=Make Riven mount bind shared
+After=local-fs.target
+Before=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mount --bind $MOUNT_PATH $MOUNT_PATH
+ExecStart=/usr/bin/mount --make-rshared $MOUNT_PATH
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+  systemctl daemon-reexec
+  systemctl daemon-reload
+  systemctl enable --now "$SERVICE_NAME"
+
+  # Re-check
+  if findmnt -no PROPAGATION "$MOUNT_PATH" | grep -q shared; then
+    ok "rshared mount enforced"
+  else
+    fail "Failed to enforce rshared mount on $MOUNT_PATH"
+  fi
+}
+
+
+############################################
 # DOWNLOAD COMPOSE FILES FIRST
 ############################################
 banner "Docker Compose Files"
@@ -380,3 +428,90 @@ docker compose up -d
 ok "Riven started"
 
 banner "INSTALL COMPLETE"
+
+############################################
+# INSTALL SUMMARY MODULE
+############################################
+banner "Riven Installation Summary"
+
+echo "📁 Paths"
+echo "  • Install Dir:        $INSTALL_DIR"
+echo "  • Backend Path:       $BACKEND_PATH"
+echo "  • Mount Path:         $MOUNT_PATH"
+echo
+
+echo "👤 Ownership"
+echo "  • UID:GID             $TARGET_UID:$TARGET_GID"
+echo
+
+echo "🌍 Frontend"
+echo "  • ORIGIN:             $ORIGIN"
+echo
+
+echo "🎬 Media Server"
+echo "  • Selected:           $MEDIA_PROFILE"
+echo "  • URL:                http://$SERVER_IP:$MEDIA_PORT"
+echo "  • Updater Enabled:    $(
+  case "$MEDIA_PROFILE" in
+    jellyfin) echo "$RIVEN_UPDATERS_JELLYFIN_ENABLED" ;;
+    plex)     echo "$RIVEN_UPDATERS_PLEX_ENABLED" ;;
+    emby)     echo "$RIVEN_UPDATERS_EMBY_ENABLED" ;;
+  esac
+)"
+echo
+
+echo "⬇️ Downloader"
+if [[ "$RIVEN_DOWNLOADERS_REAL_DEBRID_ENABLED" == "true" ]]; then
+  echo "  • Real-Debrid (enabled)"
+elif [[ "$RIVEN_DOWNLOADERS_ALL_DEBRID_ENABLED" == "true" ]]; then
+  echo "  • All-Debrid (enabled)"
+elif [[ "$RIVEN_DOWNLOADERS_DEBRID_LINK_ENABLED" == "true" ]]; then
+  echo "  • Debrid-Link (enabled)"
+else
+  echo "  • NONE (❌ invalid state)"
+fi
+echo
+
+echo "🔍 Scraper"
+if [[ "$RIVEN_SCRAPING_TORRENTIO_ENABLED" == "true" ]]; then
+  echo "  • Torrentio"
+elif [[ "$RIVEN_SCRAPING_PROWLARR_ENABLED" == "true" ]]; then
+  echo "  • Prowlarr ($RIVEN_SCRAPING_PROWLARR_URL)"
+else
+  echo "  • NONE (❌ invalid state)"
+fi
+echo
+
+echo "🗄️ Database"
+echo "  • Postgres DB:        riven"
+echo "  • User:               postgres"
+echo
+echo "  • POSTGRES PASSWORD:      "$POSTGRES_PASSWORD"
+echo "  • BACKEND API KEY:      "$BACKEND_API_KEY"
+echo "  • AUTH SECRET:      "$AUTH_SECRET"
+
+
+
+echo "🐳 Docker"
+echo "  • Media Compose:      $INSTALL_DIRdocker-compose.media.yml"
+echo "  • Riven Compose:      $INSTALL_DIRdocker-compose.yml"
+echo "  • Media Profile:      $MEDIA_PROFILE"
+echo
+
+echo "📦 Environment"
+echo "  • .env Location:     $INSTALL_DIR/.env"
+echo "  • Permissions:       600"
+echo
+
+echo "🎥 Media Server"
+echo "➡️  Open your media server in a browser:"
+echo "👉  http://$SERVER_IP:$MEDIA_PORT" 
+
+echo "🧠 Notes"
+echo "  • rshared mount enforced via systemd"
+echo "  • Media server started first"
+echo "  • Riven started after config complete"
+echo
+
+ok "Riven is ready 🚀"
+
