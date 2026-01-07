@@ -24,22 +24,30 @@ fail(){ echo "[✖] $1"; exit 1; }
 require_non_empty() {
   local prompt="$1" val
   while true; do
-    read -rsp "$prompt: " val
+    # -r = raw, no backslash escapes
+    IFS= read -r -s -p "$prompt: " val
     echo
-    # Strip ALL newlines / carriage returns defensively
-    val="$(printf '%s' "$val" | tr -d '\r\n')"
+    # FORCE single-line: remove CR, LF, tabs, spaces at ends
+    val="$(printf '%s' "$val" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     [[ -n "$val" ]] && { printf '%s' "$val"; return; }
     warn "Value required"
   done
 }
 
+
 require_url() {
   local prompt="$1" val
   while true; do
-    read -rp "$prompt: " val
-    [[ "$val" =~ ^https?:// ]] && { echo "$val"; return; }
+    IFS= read -r -p "$prompt: " val
+    val="$(printf '%s' "$val" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ "$val" =~ ^https?:// ]] && { printf '%s' "$val"; return; }
     warn "Must include http:// or https://"
   done
+}
+
+
+sanitize() {
+  printf "%s" "$1" | tr -d '\r\n'
 }
 
 ############################################
