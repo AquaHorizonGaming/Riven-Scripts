@@ -139,9 +139,7 @@ services:
       ORIGIN: ${ORIGIN}
     volumes:
       - riven-frontend-data:/riven/data
-    depends_on:
-      riven:
-        condition: service_healthy
+
     networks:
       - media
 
