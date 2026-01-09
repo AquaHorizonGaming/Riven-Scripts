@@ -132,3 +132,32 @@ If containers are running and no errors are shown:
 - Scraping is active
 - No further setup is required
 
+
+
+## 🗑️ Riven Ubuntu Uninstaller
+
+This command **completely removes Riven and all related components** installed by the Riven Ubuntu installer.
+
+### ⚠️ What this removes
+
+- Riven containers
+- Media containers (Jellyfin / Plex / Emby)
+- Docker volumes created by Riven
+- Riven systemd mount service
+- `/opt/riven`
+- `/mnt/riven/backend`
+- `/mnt/riven/mount`
+- `/mnt/riven` (if empty)
+- Riven installer logs
+
+> Docker itself is **preserved by default** (you will be prompted).
+
+---
+
+### ▶️ Run this command on Ubuntu
+
+```bash
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/ubuntu/uninstall.sh)"
+
+
+
