@@ -252,10 +252,45 @@ echo
 read -rp "Press ENTER once media server setup is complete..."
 
 ############################################
-# MEDIA API KEY
+# MEDIA AUTH TOKEN / API KEY
 ############################################
-banner "Media API Key"
-MEDIA_API_KEY="$(require_non_empty "Enter media API key / token")"
+banner "Media Server Authentication"
+
+case "$MEDIA_PROFILE" in
+  jellyfin)
+    echo "Jellyfin requires an API key."
+    echo
+    echo "How to get it:"
+    echo "  1) Open Jellyfin Web UI"
+    echo "  2) Dashboard → API Keys"
+    echo "  3) Create New API Key"
+    echo
+    MEDIA_API_KEY="$(require_non_empty "Enter Jellyfin API Key")"
+    ;;
+  plex)
+    echo "Plex requires a USER TOKEN (NOT an API key)."
+    echo
+    echo "How to get it:"
+    echo "  1) Open Plex Web App"
+    echo "  2) Visit: https://plex.tv/devices.xml while logged in"
+    echo "  3) Copy the value of X-Plex-Token"
+    echo
+    echo "⚠️  Example:"
+    echo "   <Device ... token=\"XXXXXXXXXXXX\" />"
+    echo
+    MEDIA_API_KEY="$(require_non_empty "Enter Plex X-Plex-Token")"
+    ;;
+  emby)
+    echo "Emby requires an API key."
+    echo
+    echo "How to get it:"
+    echo "  1) Open Emby Web UI"
+    echo "  2) Settings → Advanced → API Keys"
+    echo "  3) Create new key"
+    echo
+    MEDIA_API_KEY="$(require_non_empty "Enter Emby API Key")"
+    ;;
+esac
 
 ############################################
 # FRONTEND ORIGIN 
