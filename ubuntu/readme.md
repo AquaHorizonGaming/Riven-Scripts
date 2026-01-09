@@ -65,12 +65,13 @@ The installer performs a fully interactive configuration.
 - Enter required API keys / tokens
 
 ### THE SCRIPT WILL:
-- Auto-generate settings.json
-- Generate a secure .env file
-- Download docker-compose.yml
-- Pull all containers
+- Generate a secure `.env` file
+- Download the `docker-compose.yml`
+- Pull all required container images
 - Start containers with retry logic
-- Verify all services are running
+- Verify that all services are running
+- Use the `.env` file to pass configuration into the containers 
+- (mapped to `settings.json`)
 
 NO manual configuration is required after install.
 
@@ -93,7 +94,8 @@ NEW BEHAVIOR:
 After installation completes, the script prints:
 
     http://<SERVER_IP>:3000
-
+               Or
+        http://<domain>
 ---
 
 ## IMPORTANT PATHS
