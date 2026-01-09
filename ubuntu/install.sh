@@ -22,20 +22,61 @@ ok(){ echo "[✔] $1"; }
 warn(){ echo "[!] $1"; }
 fail(){ echo "[✖] $1"; exit 1; }
 
+############################################
+# REQUIRED NON-EMPTY (SILENT)
+# (keep for non-secret values if needed)
+############################################
 require_non_empty() {
   local prompt="$1" val
   while true; do
-    # -r = raw, no backslash escapes
-    IFS= read -r -s -p "$prompt: " val
-    echo
-    # FORCE single-line: remove CR, LF, tabs, spaces at ends
+    IFS= read -r -p "$prompt: " val
     val="$(printf '%s' "$val" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     [[ -n "$val" ]] && { printf '%s' "$val"; return; }
     warn "Value required"
   done
 }
 
+############################################
+# REQUIRED NON-EMPTY (MASKED ****)
+# For API keys / tokens / secrets
+############################################
+read_masked_non_empty() {
+  local prompt="$1"
+  local val="" char
 
+  while true; do
+    val=""
+    printf "%s: " "$prompt"
+
+    while IFS= read -r -s -n1 char; do
+      [[ $char == $'\n' ]] && break
+
+      # Handle backspace
+      if [[ $char == $'\177' ]]; then
+        if [[ -n "$val" ]]; then
+          val="${val%?}"
+          printf '\b \b'
+        fi
+        continue
+      fi
+
+      val+="$char"
+      printf '*'
+    done
+
+    echo
+
+    # Trim whitespace
+    val="$(printf '%s' "$val" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+    [[ -n "$val" ]] && { printf '%s' "$val"; return; }
+    warn "Value required"
+  done
+}
+
+############################################
+# URL VALIDATION
+############################################
 require_url() {
   local prompt="$1" val
   while true; do
@@ -45,7 +86,6 @@ require_url() {
     warn "Must include http:// or https://"
   done
 }
-
 
 sanitize() {
   printf "%s" "$1" | tr -d '\r\n'
