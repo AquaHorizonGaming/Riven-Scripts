@@ -210,7 +210,7 @@ case "$MEDIA_SEL" in
 esac
 
 ############################################
-# START MEDIA SERVER ONLY
+# START MEDIA SERVER 
 ############################################
 banner "Starting Media Server"
 docker compose -f docker-compose.media.yml --profile "$MEDIA_PROFILE" up -d
@@ -309,8 +309,29 @@ esac
 # SECRETS
 ############################################
 POSTGRES_PASSWORD="$(openssl rand -hex 24)"
-BACKEND_API_KEY="$(openssl rand -hex 16)"
 AUTH_SECRET="$(openssl rand -base64 32)"
+
+
+############################################
+# RIVEN API KEY MODULE
+# Order: Generate → Validate → Continue
+############################################
+
+# ------------------------------------------
+# PART 1: Generate a candidate API key
+# (matches Riven charset + length intent)
+# ------------------------------------------
+BACKEND_API_KEY="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)"
+
+# ------------------------------------------
+# PART 2: Validate using Riven's logic
+# Riven rule: len(API_KEY) == 32
+# ------------------------------------------
+if [ "${#BACKEND_API_KEY}" -ne 32 ]; then
+  # ----------------------------------------
+  # PART 3: Regenerate once if invalid
+  # ----------------------------------------
+  BACKEND_API_KEY="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 32)"
 
 ############################################
 # MEDIA UPDATER FLAGS
