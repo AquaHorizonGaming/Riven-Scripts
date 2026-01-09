@@ -1,9 +1,8 @@
 ## 📚 Table of Contents
 
-- [Install Riven](#-riven-ubuntu-installer)
-- [Update Riven](#-riven-ubuntu-updater)
-- [Uninstall Riven](#-riven-ubuntu-uninstaller)
-
+- [Install Riven](#installer)
+- [Update Riven](#updater)
+- [Uninstall Riven](#uninstaller)
 
 ## ▶️ How to run the installer (Ubuntu Script)
 
