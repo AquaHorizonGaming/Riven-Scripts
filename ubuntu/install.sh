@@ -421,7 +421,6 @@ awk '
 ' .env > .env.fixed
 
 mv .env.fixed .env
-chmod 600 .env
 
 ok ".env repaired and sanitized"
 
