@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTALL_VERSION="2026-01-11-docker-group"
-echo "Installer version: $INSTALL_VERSION"
-
 ############################################
 # CONSTANTS
 ############################################
@@ -16,6 +13,10 @@ MEDIA_COMPOSE_URL="https://raw.githubusercontent.com/AquaHorizonGaming/distribut
 RIVEN_COMPOSE_URL="https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/ubuntu/docker-compose.yml"
 
 DEFAULT_ORIGIN="http://localhost:3000"
+
+INSTALL_VERSION="v0.5"
+
+echo "Installer version: $INSTALL_VERSION"
 
 ############################################
 # HELPERS
@@ -98,6 +99,16 @@ sanitize() {
 # ROOT CHECK
 ############################################
 [[ "$(id -u)" -eq 0 ]] || fail "Run with sudo"
+
+############################################
+# INSTALLER VERSION
+############################################
+banner "Installer"
+
+print_installer_version() {
+  : "${INSTALL_VERSION:=unknown}"
+  echo "[*] Installer version: ${INSTALL_VERSION}"
+}
 
 ############################################
 # LOGGING MODULE
