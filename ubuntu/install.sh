@@ -94,17 +94,24 @@ sanitize() {
 }
 
 ############################################
-# OS CHECK (Ubuntu only)
+# OS CHECK (Ubuntu only, WSL warned)
 ############################################
 banner "OS Check"
 
 require_ubuntu() {
   # Must be Linux
   if [[ "$(uname -s)" != "Linux" ]]; then
-    fail "This installer must be run on Linux (Ubuntu). Detected: $(uname -s)"
+    fail "This installer must be run on Ubuntu Linux. Detected: $(uname -s)"
   fi
 
-  # Must have /etc/os-release
+  # Detect WSL
+  if grep -qi microsoft /proc/version 2>/dev/null; then
+    warn "WSL detected — this is not recommended"
+    read -rp "Continue anyway? [y/N]: " yn
+    [[ "${yn:-}" =~ ^[Yy]$ ]] || exit 1
+  fi
+
+  # Must have os-release
   if [[ ! -f /etc/os-release ]]; then
     fail "Cannot determine OS (missing /etc/os-release)"
   fi
