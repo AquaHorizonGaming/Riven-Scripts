@@ -107,8 +107,11 @@ banner "Version"
 
 print_installer_version() {
   : "${INSTALL_VERSION:=unknown}"
-  ok "[*] Installer version: ${INSTALL_VERSION}"
+  ok "Installer version: ${INSTALL_VERSION}"
 }
+
+print_installer_version
+
 
 ############################################
 # LOGGING MODULE
