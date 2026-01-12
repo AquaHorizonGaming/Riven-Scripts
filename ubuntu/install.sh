@@ -488,7 +488,7 @@ case "$DL_SEL" in
     echo "  2) Copy the API Token shown"
     echo
     echo "Paste ONLY the API token value below:"
-    RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY="$(read_masked_non_empty "Enter Real-Debrid API Token")"
+    RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY="$(require_non_empty "Enter Real-Debrid API Token")"
     ;;
   2)
     RIVEN_DOWNLOADERS_ALL_DEBRID_ENABLED=true
@@ -500,7 +500,7 @@ case "$DL_SEL" in
     echo "  2) Generate or copy an existing key"
     echo
     echo "Paste ONLY the API key value below:"
-    RIVEN_DOWNLOADERS_ALL_DEBRID_API_KEY="$(read_masked_non_empty "Enter All-Debrid API Key")"
+    RIVEN_DOWNLOADERS_ALL_DEBRID_API_KEY="$(require_non_empty "Enter All-Debrid API Key")"
     ;;
   3)
     RIVEN_DOWNLOADERS_DEBRID_LINK_ENABLED=true
@@ -512,7 +512,7 @@ case "$DL_SEL" in
     echo "  2) Copy your API key"
     echo
     echo "Paste ONLY the API key value below:"
-    RIVEN_DOWNLOADERS_DEBRID_LINK_API_KEY="$(read_masked_non_empty "Enter Debrid-Link API Key")"
+    RIVEN_DOWNLOADERS_DEBRID_LINK_API_KEY="$(require_non_empty "Enter Debrid-Link API Key")"
     ;;
   *)
     fail "Downloader selection REQUIRED"
