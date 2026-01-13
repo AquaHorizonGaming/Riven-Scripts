@@ -86,12 +86,11 @@ else
 fi
 
 ############################################
-# PATH MODEL (ABSOLUTELY CORRECT)
+# PATH MODEL
 ############################################
 banner "Filesystem Model"
 
 WSL_DRVFS=false
-
 if [[ "$IS_WSL" == true && -d /mnt/c ]]; then
   BACKEND_PATH="/mnt/c/riven/backend"
   MOUNT_PATH="/mnt/c/riven/mount"
@@ -128,7 +127,7 @@ apt-get install -y ca-certificates curl gnupg lsb-release openssl fuse3
 ok "Dependencies installed"
 
 ############################################
-# USER CONTEXT (SAFE)
+# USER CONTEXT
 ############################################
 banner "User Context"
 
@@ -137,7 +136,7 @@ TARGET_GID="$(id -g "${SUDO_USER:-root}" 2>/dev/null || echo 1000)"
 ok "UID:GID = $TARGET_UID:$TARGET_GID"
 
 ############################################
-# DOCKER (WSL + UBUNTU SAFE)
+# DOCKER + COMPOSE SETUP
 ############################################
 banner "Docker"
 
@@ -149,13 +148,76 @@ if ! command -v docker >/dev/null; then
   fi
 fi
 
-docker info >/dev/null || fail "Docker daemon not reachable"
-docker compose version >/dev/null || fail "docker compose not available"
+# Ensure daemon reachable
+docker info >/dev/null 2>&1 || fail "Docker daemon not reachable"
+
+# Compose command wrapper
+COMPOSE_MODE=""
+
+compose() {
+  case "$COMPOSE_MODE" in
+    v2) docker compose "$@" ;;
+    v1) docker-compose "$@" ;;
+    *)  fail "Compose not initialized" ;;
+  esac
+}
+
+install_compose_v2_plugin() {
+  local arch url dest
+  arch="$(uname -m)"
+  case "$arch" in
+    x86_64|amd64) arch="x86_64" ;;
+    aarch64|arm64) arch="aarch64" ;;
+    *) fail "Unsupported arch for compose plugin: $(uname -m)" ;;
+  esac
+
+  url="https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${arch}"
+
+  # Prefer standard plugin dir. Docker scans these:
+  # - /usr/local/lib/docker/cli-plugins
+  # - /usr/lib/docker/cli-plugins (varies)
+  # - ~/.docker/cli-plugins
+  mkdir -p /usr/local/lib/docker/cli-plugins
+
+  dest="/usr/local/lib/docker/cli-plugins/docker-compose"
+
+  warn "Installing Docker Compose v2 plugin to: $dest"
+  curl -fsSL "$url" -o "$dest" || fail "Failed to download compose plugin"
+  chmod +x "$dest" || true
+
+  # Verify
+  if docker compose version >/dev/null 2>&1; then
+    ok "Docker Compose v2 installed"
+    return 0
+  fi
+
+  # Fallback to user plugin path if system path isn't picked up
+  mkdir -p /root/.docker/cli-plugins
+  cp -f "$dest" /root/.docker/cli-plugins/docker-compose
+  chmod +x /root/.docker/cli-plugins/docker-compose || true
+
+  docker compose version >/dev/null 2>&1 || fail "Compose plugin installed but not detected by Docker"
+  ok "Docker Compose v2 installed (user plugin path)"
+}
+
+# Detect compose availability
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE_MODE="v2"
+  ok "Compose: docker compose (v2)"
+elif command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE_MODE="v1"
+  ok "Compose: docker-compose (v1)"
+else
+  # Auto-install v2 plugin
+  install_compose_v2_plugin
+  COMPOSE_MODE="v2"
+  ok "Compose: docker compose (v2)"
+fi
 
 ok "Docker ready"
 
 ############################################
-# FILESYSTEM SETUP (NO FAKE PERMS)
+# FILESYSTEM SETUP
 ############################################
 banner "Filesystem Setup"
 
@@ -178,7 +240,7 @@ curl -fsSL "$RIVEN_COMPOSE_URL" -o docker-compose.yml
 ok "Compose files downloaded"
 
 ############################################
-# WSL COMPOSE OVERRIDE (STATIC & SAFE)
+# WSL COMPOSE OVERRIDE
 ############################################
 USE_WSL_OVERRIDE=false
 
@@ -212,11 +274,11 @@ case "$MEDIA_SEL" in
 esac
 
 ############################################
-# START MEDIA SERVER (NO ARRAYS)
+# START MEDIA SERVER
 ############################################
 banner "Starting Media Server"
 
-docker compose -f docker-compose.media.yml --profile "$MEDIA_PROFILE" up -d
+compose -f docker-compose.media.yml --profile "$MEDIA_PROFILE" up -d
 ok "Media server started"
 
 SERVER_IP="$(hostname -I | awk '{print $1}')"
@@ -239,7 +301,7 @@ read -rp "Using reverse proxy? (y/N): " yn
 [[ "${yn,,}" == "y" ]] && ORIGIN="$(require_url "Public URL")"
 
 ############################################
-# SECRETS (SAFE ON BOTH)
+# SECRETS
 ############################################
 POSTGRES_PASSWORD="$(openssl rand -hex 24)"
 AUTH_SECRET="$(openssl rand -base64 32)"
@@ -274,17 +336,14 @@ else
 fi
 
 ############################################
-# START RIVEN (NO ARRAYS)
+# START RIVEN
 ############################################
 banner "Starting Riven"
 
 if [[ "$USE_WSL_OVERRIDE" == true ]]; then
-  docker compose \
-    -f docker-compose.yml \
-    -f docker-compose.wsl.override.yml \
-    up -d
+  compose -f docker-compose.yml -f docker-compose.wsl.override.yml up -d
 else
-  docker compose -f docker-compose.yml up -d
+  compose -f docker-compose.yml up -d
 fi
 
 ############################################
