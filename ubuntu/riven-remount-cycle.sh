@@ -18,6 +18,7 @@ DEFAULT_MOUNT="/mnt/riven/mount"
 UNMOUNT_RETRIES=5
 WAIT_BETWEEN=2
 REMOUNT_WAIT=5
+VERSION=1.0
 
 ############################################
 # OUTPUT HELPERS
@@ -30,6 +31,15 @@ fail()    { echo "✖ $1"; exit 1; }
 is_mounted() {
   findmnt -T "$MOUNT_PATH" >/dev/null 2>&1
 }
+
+############################################
+# VERSION MODULE
+############################################
+show_version() {
+  section "Riven Bind-Remount Cycle"
+  ok "Version: v$VERSION"
+}
+
 
 ############################################
 # MOUNT PATH PROMPT
