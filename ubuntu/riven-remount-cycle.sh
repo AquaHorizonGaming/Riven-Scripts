@@ -15,11 +15,11 @@ fi
 RIVEN_CONTAINER="riven"
 DEFAULT_MOUNT="/mnt/riven/mount"
 
-UNMOUNT_RETRIES=5
+UNMOUNT_RETRIES=3
 WAIT_BETWEEN=2
 REMOUNT_WAIT=5
 WAIT_TIME=5
-VERSION=1.5
+VERSION=2.0
 
 ############################################
 # OUTPUT HELPERS
