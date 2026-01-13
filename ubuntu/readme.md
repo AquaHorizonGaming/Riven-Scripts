@@ -8,7 +8,7 @@
 
 Run this command on Ubuntu:
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/ubuntu/install.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/riven-scripts/main/ubuntu/riven-remount-cycle.sh)"
 ```
 
 <a id="installer"></a># 🔁 Riven Ubuntu Installer
@@ -150,7 +150,7 @@ This command **completely removes Riven and all related components** installed b
 ### ▶️ Run this command on Ubuntu
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/ubuntu/riven-uninstall.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/riven-scripts/main/ubuntu/riven-uninstall.sh)"
 ```
 ### ⚠️ What this removes
 
@@ -172,7 +172,7 @@ sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/d
 ### ▶️ Run this command on Ubuntu
 
 ```bash
-sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/ubuntu/riven-update.sh)"
+sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/riven-scripts/main/ubuntu/riven-update.sh)"
 ```
 
 This command updates **Riven** to the latest available Docker images and optionally updates the configured **media server**.
