@@ -52,7 +52,7 @@ Full Ubuntu documentation:
 ## Repository Structure
 
 ```text
-distributables/
+Riven-Scripts/
 ├── proxmox/        # Proxmox VE LXC installer + docs
 ├── ubuntu/         # Ubuntu installer + docs
 └── README.md       # This file
