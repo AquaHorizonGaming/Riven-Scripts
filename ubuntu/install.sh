@@ -14,7 +14,7 @@ RIVEN_COMPOSE_URL="https://raw.githubusercontent.com/AquaHorizonGaming/distribut
 
 DEFAULT_ORIGIN="http://localhost:3000"
 
-INSTALL_VERSION="v0.6.7"
+INSTALL_VERSION="v0.6.8"
 
 ############################################
 # HELPERS
