@@ -766,17 +766,36 @@ echo ""
 echo "🔍 Scrapers Enabled"
 SCRAPER_COUNT=0
 
-[[ "$RIVEN_SCRAPING_TORRENTIO_ENABLED" == "true" ]] && { echo "  • Torrentio"; ((SCRAPER_COUNT++)); }
-[[ "$RIVEN_SCRAPING_PROWLARR_ENABLED" == "true"  ]] && { echo "  • Prowlarr ($RIVEN_SCRAPING_PROWLARR_URL)"; ((SCRAPER_COUNT++)); }
-[[ "$RIVEN_SCRAPING_COMET_ENABLED" == "true"     ]] && { echo "  • Comet ($RIVEN_SCRAPING_COMET_URL)"; ((SCRAPER_COUNT++)); }
-[[ "$RIVEN_SCRAPING_JACKETT_ENABLED" == "true"   ]] && { echo "  • Jackett ($RIVEN_SCRAPING_JACKETT_URL)"; ((SCRAPER_COUNT++)); }
-[[ "$RIVEN_SCRAPING_ZILEAN_ENABLED" == "true"    ]] && { echo "  • Zilean ($RIVEN_SCRAPING_ZILEAN_URL)"; ((SCRAPER_COUNT++)); }
+if [[ "${RIVEN_SCRAPING_TORRENTIO_ENABLED:-false}" == "true" ]]; then
+  echo "  • Torrentio"
+  ((SCRAPER_COUNT++))
+fi
+
+if [[ "${RIVEN_SCRAPING_PROWLARR_ENABLED:-false}" == "true" ]]; then
+  echo "  • Prowlarr"
+  ((SCRAPER_COUNT++))
+fi
+
+if [[ "${RIVEN_SCRAPING_COMET_ENABLED:-false}" == "true" ]]; then
+  echo "  • Comet"
+  ((SCRAPER_COUNT++))
+fi
+
+if [[ "${RIVEN_SCRAPING_JACKETT_ENABLED:-false}" == "true" ]]; then
+  echo "  • Jackett"
+  ((SCRAPER_COUNT++))
+fi
+
+if [[ "${RIVEN_SCRAPING_ZILEAN_ENABLED:-false}" == "true" ]]; then
+  echo "  • Zilean"
+  ((SCRAPER_COUNT++))
+fi
 
 if [[ "$SCRAPER_COUNT" -eq 0 ]]; then
   echo "  • NONE (invalid)"
 fi
-echo ""
 
+echo ""
 echo "📁 Paths"
 echo "  • Install Dir:  $INSTALL_DIR"
 echo "  • Backend Path: $BACKEND_PATH"
