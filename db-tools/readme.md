@@ -33,6 +33,7 @@ Works on:
 
 ---
 
+<a id="run-the-database-maintenance-tool"></a>
 ## ▶️ Run the Database Maintenance Tool
 
 Run this **directly on the system where Riven is installed**:
@@ -43,6 +44,7 @@ This command automatically fixes Windows CRLF line-ending issues before executio
 
 ---
 
+<a id="what-this-tool-does"></a>
 ## 🧠 What This Tool Does
 
 This script provides an **interactive menu** for managing the **Riven PostgreSQL database container**.
@@ -55,8 +57,10 @@ It automatically:
 
 ---
 
+<a id="available-operations"></a>
 ## 🛠 Available Operations
 
+<a id="backup-database"></a>
 ### 🗂️ Backup Database
 
 Creates a timestamped PostgreSQL dump:
@@ -66,6 +70,7 @@ Creates a timestamped PostgreSQL dump:
 
 ---
 
+<a id="vacuum--analyze"></a>
 ### 🧹 Vacuum & Analyze
 
 Performs standard PostgreSQL maintenance:
@@ -77,6 +82,7 @@ Safe for routine maintenance.
 
 ---
 
+<a id="clean-stale--orphaned-data"></a>
 ### 🧽 Clean Stale / Orphaned Data
 
 Removes broken or unused records caused by:
@@ -88,6 +94,7 @@ Removes broken or unused records caused by:
 
 ---
 
+<a id="reset-database-destructive"></a>
 ### 🔄 Reset Database (Destructive)
 
 🚨 **THIS WILL DELETE ALL RIVEN DATABASE DATA** 🚨
@@ -107,6 +114,7 @@ A backup is **strongly recommended first**.
 
 ---
 
+<a id="recommended-usage"></a>
 ## 🔁 Recommended Usage
 
 ### Routine maintenance
@@ -127,6 +135,7 @@ A backup is **strongly recommended first**.
 
 ---
 
+<a id="restart-services-after-maintenance"></a>
 ## 🔄 Restart Services After Maintenance
 
 After completing any operation:
@@ -141,6 +150,7 @@ If you use a media server, restart only what applies:
 
 ---
 
+<a id="backup-files"></a>
 ## 📂 Backup Files
 
 Backups are created with timestamps:
@@ -151,6 +161,7 @@ Store these somewhere safe before performing destructive actions.
 
 ---
 
+<a id="safety-guarantees"></a>
 ## 🛡️ Safety Guarantees
 
 This tool:
@@ -163,6 +174,7 @@ This tool:
 
 ---
 
+<a id="when-not-to-use-this-tool"></a>
 ## 🚫 When NOT to Use This Tool
 
 Do **not** use this script to:
@@ -175,6 +187,7 @@ Use the appropriate **installer**, **updater**, or **remount-cycle script** inst
 
 ---
 
+<a id="summary"></a>
 ## ✅ Summary
 
 - Interactive PostgreSQL maintenance for Riven
