@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+
+init_installer_state() {
+  INSTALL_DIR='/opt/riven'
+  BACKEND_PATH='/mnt/riven/backend'
+  MOUNT_PATH='/mnt/riven/mount'
+  LOG_DIR='/tmp/logs/riven'
+
+  DEFAULT_ORIGIN='http://localhost:3000'
+  INSTALL_VERSION='v0.6'
+
+  COMPOSE_BASE_URL="${BASE_URL%/install}"
+  MEDIA_COMPOSE_URL="$COMPOSE_BASE_URL/docker-compose.media.yml"
+  RIVEN_COMPOSE_URL="$COMPOSE_BASE_URL/docker-compose.yml"
+}
+
+print_installer_version() {
+  banner 'Version'
+  ok "Installer version: ${INSTALL_VERSION:-unknown}"
+}
+
+detect_timezone() {
+  timedatectl show --property=Timezone --value 2>/dev/null \
+    || cat /etc/timezone 2>/dev/null \
+    || echo UTC
+}
+
+configure_timezone() {
+  banner 'Timezone'
+
+  local detected=''
+  local input=''
+  detected="$(detect_timezone)"
+
+  read -r -p "Timezone [$detected]: " input
+  TZ_SELECTED="${input:-$detected}"
+
+  [[ -f "/usr/share/zoneinfo/$TZ_SELECTED" ]] || fail "Invalid timezone: $TZ_SELECTED"
+
+  ln -sf "/usr/share/zoneinfo/$TZ_SELECTED" /etc/localtime
+  echo "$TZ_SELECTED" > /etc/timezone
+
+  ok "Timezone set: $TZ_SELECTED"
+}
+
+build_env_state() {
+  RIVEN_UPDATERS_JELLYFIN_ENABLED=false
+  RIVEN_UPDATERS_PLEX_ENABLED=false
+  RIVEN_UPDATERS_EMBY_ENABLED=false
+
+  RIVEN_UPDATERS_JELLYFIN_API_KEY=''
+  RIVEN_UPDATERS_PLEX_TOKEN=''
+  RIVEN_UPDATERS_EMBY_API_KEY=''
+
+  case "$MEDIA_PROFILE" in
+    jellyfin)
+      RIVEN_UPDATERS_JELLYFIN_ENABLED=true
+      RIVEN_UPDATERS_JELLYFIN_API_KEY="$MEDIA_API_KEY"
+      ;;
+    plex)
+      RIVEN_UPDATERS_PLEX_ENABLED=true
+      RIVEN_UPDATERS_PLEX_TOKEN="$MEDIA_API_KEY"
+      ;;
+    emby)
+      RIVEN_UPDATERS_EMBY_ENABLED=true
+      RIVEN_UPDATERS_EMBY_API_KEY="$MEDIA_API_KEY"
+      ;;
+  esac
+}
+
+write_env_file() {
+  banner '.env Generation'
+
+  cat > "$INSTALL_DIR/.env" <<EOF_ENV
+TZ="$TZ_SELECTED"
+ORIGIN="$ORIGIN"
+MEDIA_PROFILE="$MEDIA_PROFILE"
+
+POSTGRES_DB="riven"
+POSTGRES_USER="postgres"
+POSTGRES_PASSWORD="$POSTGRES_PASSWORD"
+
+BACKEND_API_KEY="$BACKEND_API_KEY"
+AUTH_SECRET="$AUTH_SECRET"
+
+RIVEN_UPDATERS_LIBRARY_PATH="$BACKEND_PATH"
+RIVEN_UPDATERS_UPDATER_INTERVAL="120"
+
+RIVEN_UPDATERS_JELLYFIN_ENABLED="$RIVEN_UPDATERS_JELLYFIN_ENABLED"
+RIVEN_UPDATERS_JELLYFIN_API_KEY="$RIVEN_UPDATERS_JELLYFIN_API_KEY"
+RIVEN_UPDATERS_JELLYFIN_URL="http://jellyfin:8096"
+
+RIVEN_UPDATERS_PLEX_ENABLED="$RIVEN_UPDATERS_PLEX_ENABLED"
+RIVEN_UPDATERS_PLEX_TOKEN="$RIVEN_UPDATERS_PLEX_TOKEN"
+RIVEN_UPDATERS_PLEX_URL="http://plex:32400"
+
+RIVEN_UPDATERS_EMBY_ENABLED="$RIVEN_UPDATERS_EMBY_ENABLED"
+RIVEN_UPDATERS_EMBY_API_KEY="$RIVEN_UPDATERS_EMBY_API_KEY"
+RIVEN_UPDATERS_EMBY_URL="http://emby:8097"
+
+RIVEN_DOWNLOADERS_REAL_DEBRID_ENABLED="$RIVEN_DOWNLOADERS_REAL_DEBRID_ENABLED"
+RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY="$RIVEN_DOWNLOADERS_REAL_DEBRID_API_KEY"
+
+RIVEN_DOWNLOADERS_ALL_DEBRID_ENABLED="$RIVEN_DOWNLOADERS_ALL_DEBRID_ENABLED"
+RIVEN_DOWNLOADERS_ALL_DEBRID_API_KEY="$RIVEN_DOWNLOADERS_ALL_DEBRID_API_KEY"
+
+RIVEN_DOWNLOADERS_DEBRID_LINK_ENABLED="$RIVEN_DOWNLOADERS_DEBRID_LINK_ENABLED"
+RIVEN_DOWNLOADERS_DEBRID_LINK_API_KEY="$RIVEN_DOWNLOADERS_DEBRID_LINK_API_KEY"
+
+RIVEN_SCRAPING_TORRENTIO_ENABLED="$RIVEN_SCRAPING_TORRENTIO_ENABLED"
+RIVEN_SCRAPING_PROWLARR_ENABLED="$RIVEN_SCRAPING_PROWLARR_ENABLED"
+RIVEN_SCRAPING_PROWLARR_URL="$RIVEN_SCRAPING_PROWLARR_URL"
+RIVEN_SCRAPING_PROWLARR_API_KEY="$RIVEN_SCRAPING_PROWLARR_API_KEY"
+
+RIVEN_SCRAPING_COMET_ENABLED="$RIVEN_SCRAPING_COMET_ENABLED"
+RIVEN_SCRAPING_COMET_URL="$RIVEN_SCRAPING_COMET_URL"
+
+RIVEN_SCRAPING_JACKETT_ENABLED="$RIVEN_SCRAPING_JACKETT_ENABLED"
+RIVEN_SCRAPING_JACKETT_URL="$RIVEN_SCRAPING_JACKETT_URL"
+RIVEN_SCRAPING_JACKETT_API_KEY="$RIVEN_SCRAPING_JACKETT_API_KEY"
+
+RIVEN_SCRAPING_ZILEAN_ENABLED="$RIVEN_SCRAPING_ZILEAN_ENABLED"
+RIVEN_SCRAPING_ZILEAN_URL="$RIVEN_SCRAPING_ZILEAN_URL"
+EOF_ENV
+
+  ok '.env written'
+}
+
+sanitize_env_file() {
+  banner 'Fixing .env formatting issues'
+
+  awk '
+    BEGIN { key=""; val="" }
+    {
+      if (key != "") {
+        val = val $0
+        if ($0 ~ /"$/) {
+          gsub(/\n/, "", val)
+          sub(/"$/, "", val)
+          print key "\"" val "\""
+          key=""
+          val=""
+        }
+        next
+      }
+
+      if ($0 ~ /^[A-Z0-9_]+="$/) {
+        split($0, a, "=")
+        key = a[1] "="
+        val = ""
+        next
+      }
+
+      print
+    }
+  ' "$INSTALL_DIR/.env" > "$INSTALL_DIR/.env.fixed"
+
+  mv "$INSTALL_DIR/.env.fixed" "$INSTALL_DIR/.env"
+  ok '.env repaired and sanitized'
+}

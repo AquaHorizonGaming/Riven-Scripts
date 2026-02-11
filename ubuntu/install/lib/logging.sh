@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
 
-log()        { echo "[INFO]  $*"; }
-log_warn()   { echo "[WARN]  $*"; }
-log_error()  { echo "[ERROR] $*"; }
-log_section(){ echo -e "\n========== $* ==========\n"; }
+banner() {
+  echo -e "\n========================================\n $1\n========================================"
+}
+
+ok() {
+  printf '✔  %s\n' "$1"
+}
+
+warn() {
+  printf '⚠  %s\n' "$1"
+}
+
+fail() {
+  printf '✖  %s\n' "$1" >&2
+  exit 1
+}
 
 init_logging() {
   local log_dir="$1"
@@ -13,8 +25,7 @@ init_logging() {
   touch "$LOG_FILE"
 
   exec > >(tee -a "$LOG_FILE") 2>&1
-  trap 'log_error "Installer exited unexpectedly at line $LINENO"' ERR
+  trap 'fail "Installer exited unexpectedly at line $LINENO"' ERR
 
-  log "Logging initialized"
-  log "Log file: $LOG_FILE"
+  ok "Logging initialized: $LOG_FILE"
 }
