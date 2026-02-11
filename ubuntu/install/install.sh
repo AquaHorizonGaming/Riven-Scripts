@@ -18,6 +18,11 @@ cleanup() {
 trap cleanup EXIT
 
 resolve_base_url() {
+  local default_owner="AquaHorizonGaming"
+  local default_repo="riven-scripts"
+  local default_branch="fix-install-script"
+  local default_path="ubuntu/install"
+
   if [[ -n "${RIVEN_INSTALL_BASE_URL:-}" ]]; then
     printf '%s' "$RIVEN_INSTALL_BASE_URL"
     return
@@ -28,7 +33,16 @@ resolve_base_url() {
     return
   fi
 
-  printf '%s' "https://raw.githubusercontent.com/AquaHorizonGaming/distributables/main/ubuntu/install"
+  printf '%s' "https://raw.githubusercontent.com/${default_owner}/${default_repo}/${default_branch}/${default_path}"
+}
+
+
+ensure_module_endpoint_reachable() {
+  local base_url="$1"
+  local probe_url="$base_url/lib/helpers.sh"
+
+  curl -fsSL "$probe_url" -o /dev/null \
+    || fatal "Installer module endpoint is unreachable: $probe_url"
 }
 
 validate_downloaded_module() {
@@ -69,6 +83,8 @@ bootstrap_modules() {
   mkdir -p "$TMP_ROOT"
   TMP_DIR="$(mktemp -d "$TMP_ROOT/run.XXXXXX")"
   mkdir -p "$TMP_DIR/lib"
+
+  ensure_module_endpoint_reachable "$base_url"
 
   for module in "${modules[@]}"; do
     download_module "$base_url" "$module"
