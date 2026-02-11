@@ -1,12 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEBUG_MODE=false
-if [[ "${1:-}" == "--debug" ]]; then
-  DEBUG_MODE=true
-  shift
-fi
-
 ############################################
 # CONSTANTS
 ############################################
@@ -20,7 +14,7 @@ RIVEN_COMPOSE_URL="https://raw.githubusercontent.com/AquaHorizonGaming/distribut
 
 DEFAULT_ORIGIN="http://localhost:3000"
 
-INSTALL_VERSION="v0.6.8"
+INSTALL_VERSION="v0.5.8"
 
 ############################################
 # HELPERS
@@ -29,23 +23,6 @@ banner(){ echo -e "\n========================================\n $1\n============
 ok()   { printf "✔  %s\n" "$1"; }
 warn() { printf "⚠  %s\n" "$1"; }
 fail() { printf "✖  %s\n" "$1"; exit 1; }
-
-# Capture whether the original stdout is a terminal before logging redirection.
-exec 3>&1
-ORIGINAL_STDOUT_IS_TTY=false
-[[ -t 3 ]] && ORIGINAL_STDOUT_IS_TTY=true
-
-run_docker_compose_up_detached() {
-  local -a compose_cmd=("$@")
-
-  if [[ "$ORIGINAL_STDOUT_IS_TTY" == "true" ]]; then
-    # Preserve TTY behavior so pull progress updates in-place.
-    "${compose_cmd[@]}" up -d --pull always 1>&3 2>&3
-  else
-    # Keep normal output in CI / non-interactive shells.
-    "${compose_cmd[@]}" up -d --pull always
-  fi
-}
 
 ############################################
 # REQUIRED NON-EMPTY (SILENT)
@@ -108,7 +85,7 @@ require_url() {
     IFS= read -r -p "$prompt: " val
     val="$(printf '%s' "$val" | tr -d '\r\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
     [[ "$val" =~ ^https?:// ]] && { printf '%s' "$val"; return; }
-    warn "Must include http:// or https://" >&2
+    warn "Must include http:// or https://"
   done
 }
 
@@ -187,14 +164,7 @@ log_warn()   { echo "[WARN]  $*"; }
 log_error()  { echo "[ERROR] $*"; }
 log_section(){ echo -e "\n========== $* ==========\n"; }
 
-if [[ "$DEBUG_MODE" == "true" ]]; then
-  export PS4='+ [${BASH_SOURCE##*/}:${LINENO}:${FUNCNAME[0]:-main}] '
-  set -x
-  debug "Debug mode enabled"
-  debug "original_stdout_is_tty=$ORIGINAL_STDOUT_IS_TTY"
-fi
-
-trap 'rc=$?; cmd=${BASH_COMMAND:-unknown}; log_error "Installer exited unexpectedly at line $LINENO (rc=$rc, cmd: $cmd)"; debug "failure_context rc=$rc cmd=$cmd"; exit $rc' ERR
+trap 'log_error "Installer exited unexpectedly at line $LINENO"' ERR
 
 log "Logging initialized"
 log "Log file: $LOG_FILE"
@@ -203,7 +173,6 @@ log "Log file: $LOG_FILE"
 # TIMEZONE (INSTALLER SAFE)
 ############################################
 banner "Timezone"
-debug_step "timezone detection and configuration"
 
 detect_timezone() {
   timedatectl show --property=Timezone --value 2>/dev/null \
@@ -228,7 +197,6 @@ ok "Timezone set: $TZ_SELECTED"
 # SYSTEM DEPS
 ############################################
 banner "System Dependencies"
-debug_step "system dependency verification"
 
 dpkg -s ca-certificates curl gnupg lsb-release openssl fuse3 >/dev/null 2>&1 \
   && ok "System dependencies already installed" \
@@ -276,7 +244,6 @@ ok "Detected user ownership: UID=$TARGET_UID GID=$TARGET_GID"
 # DOCKER
 ############################################
 banner "Docker"
-debug_step "docker installation check"
 
 if command -v docker >/dev/null 2>&1; then
   ok "Docker already installed"
@@ -425,7 +392,7 @@ esac
 # START MEDIA SERVER 
 ############################################
 banner "Starting Media Server"
-run_docker_compose_up_detached docker compose -f docker-compose.media.yml --profile "$MEDIA_PROFILE"
+docker compose -f docker-compose.media.yml --profile "$MEDIA_PROFILE" up -d
 ok "Media server started"
 
 SERVER_IP="$(hostname -I | awk '{print $1}')"
@@ -569,24 +536,20 @@ case "$DL_SEL" in
 esac
 
 ############################################
-# SCRAPER SELECTION (MULTI-SELECT, REQUIRED)
+# SCRAPER SELECTION (REQUIRED)
 ############################################
 banner "Scraper Selection (REQUIRED)"
 
-echo "Select one or more scraping backends."
-echo "Enter numbers separated by spaces or commas (example: 1 3 5 or 1,3,5)"
-echo ""
+echo "Choose ONE scraping backend:"
+echo
 echo "1) Torrentio   (No config required)"
 echo "2) Prowlarr    (Local instance only)"
 echo "3) Comet       (Public or self-hosted)"
 echo "4) Jackett     (Local instance only)"
 echo "5) Zilean      (Public or self-hosted)"
-echo ""
+echo
 
-read -rp "Select one or more: " SCR_SEL_RAW
-
-# Normalize commas → spaces, collapse whitespace
-SCR_SEL="$(echo "$SCR_SEL_RAW" | tr ',' ' ' | xargs)"
+read -rp "Select ONE: " SCR_SEL
 
 # Reset all flags
 RIVEN_SCRAPING_TORRENTIO_ENABLED=false
@@ -595,97 +558,82 @@ RIVEN_SCRAPING_COMET_ENABLED=false
 RIVEN_SCRAPING_JACKETT_ENABLED=false
 RIVEN_SCRAPING_ZILEAN_ENABLED=false
 
-# Reset config values
 RIVEN_SCRAPING_PROWLARR_URL=""
 RIVEN_SCRAPING_PROWLARR_API_KEY=""
+
 RIVEN_SCRAPING_COMET_URL=""
+
 RIVEN_SCRAPING_JACKETT_URL=""
 RIVEN_SCRAPING_JACKETT_API_KEY=""
+
 RIVEN_SCRAPING_ZILEAN_URL=""
 
-VALID_SELECTION=false
-
-for sel in $SCR_SEL; do
-  case "$sel" in
-    1)
-      RIVEN_SCRAPING_TORRENTIO_ENABLED=true
-      VALID_SELECTION=true
-      log "Torrentio enabled"
-      ;;
-    2)
-      RIVEN_SCRAPING_PROWLARR_ENABLED=true
-      VALID_SELECTION=true
-
-      echo ""
-      echo "Prowlarr configuration"
-      echo "Example: http://localhost:9696"
-      echo "API Key: Settings → General → API Key"
-
-      RIVEN_SCRAPING_PROWLARR_URL="$(require_url "Enter Prowlarr URL")"
-      RIVEN_SCRAPING_PROWLARR_API_KEY="$(read_masked_non_empty "Enter Prowlarr API Key")"
-
-      log "Prowlarr enabled"
-      ;;
-    3)
-      RIVEN_SCRAPING_COMET_ENABLED=true
-      VALID_SELECTION=true
-
-      echo ""
-      echo "Comet configuration"
-      echo "Examples:"
-      echo " • https://cometfortheweebs.midnightignite.me"
-      echo " • http://localhost:<port>"
-
-      RIVEN_SCRAPING_COMET_URL="$(require_url "Enter Comet base URL")"
-
-      log "Comet enabled"
-      ;;
-    4)
-      RIVEN_SCRAPING_JACKETT_ENABLED=true
-      VALID_SELECTION=true
-
-      echo ""
-      echo "Jackett configuration"
-      echo "Example: http://localhost:9117"
-      echo "API Key: Jackett Web UI → Top-right corner"
-
-      RIVEN_SCRAPING_JACKETT_URL="$(require_url "Enter Jackett URL")"
-      RIVEN_SCRAPING_JACKETT_API_KEY="$(read_masked_non_empty "Enter Jackett API Key")"
-
-      log "Jackett enabled"
-      ;;
-    5)
-      RIVEN_SCRAPING_ZILEAN_ENABLED=true
-      VALID_SELECTION=true
-
-      echo ""
-      echo "Zilean configuration"
-      echo "Examples:"
-      echo " • https://zilean.example.com"
-      echo " • http://localhost:<port>"
-
-      RIVEN_SCRAPING_ZILEAN_URL="$(require_url "Enter Zilean base URL")"
-
-      log "Zilean enabled"
-      ;;
-    *)
-      warn "Invalid scraper option ignored: $sel"
-      ;;
-  esac
-done
-
-if [[ "$VALID_SELECTION" != "true" ]]; then
-  fail "At least one scraper must be selected"
-fi
-
-echo ""
-echo "Enabled scrapers:"
-[[ "$RIVEN_SCRAPING_TORRENTIO_ENABLED" == "true" ]] && echo " • Torrentio"
-[[ "$RIVEN_SCRAPING_PROWLARR_ENABLED" == "true" ]] && echo " • Prowlarr"
-[[ "$RIVEN_SCRAPING_COMET_ENABLED" == "true" ]] && echo " • Comet"
-[[ "$RIVEN_SCRAPING_JACKETT_ENABLED" == "true" ]] && echo " • Jackett"
-[[ "$RIVEN_SCRAPING_ZILEAN_ENABLED" == "true" ]] && echo " • Zilean"
-echo ""
+case "$SCR_SEL" in
+  1)
+    RIVEN_SCRAPING_TORRENTIO_ENABLED=true
+    echo
+    echo "Torrentio selected."
+    echo "• Uses public Torrentio endpoint"
+    echo "• No configuration required"
+    ;;
+  2)
+    RIVEN_SCRAPING_PROWLARR_ENABLED=true
+    echo
+    echo "Prowlarr selected."
+    echo
+    echo "Example:"
+    echo "  • http://localhost:9696"
+    echo
+    echo "API Key location:"
+    echo "  Settings → General → API Key"
+    echo
+    RIVEN_SCRAPING_PROWLARR_URL="$(require_url "Enter Prowlarr URL")"
+    RIVEN_SCRAPING_PROWLARR_API_KEY="$(read_masked_non_empty "Enter Prowlarr API Key")"
+    ;;
+  3)
+    RIVEN_SCRAPING_COMET_ENABLED=true
+    echo
+    echo "Comet selected."
+    echo
+    echo "Examples:"
+    echo "  • Public: https://cometfortheweebs.midnightignite.me"
+    echo "  • Local:  http://localhost:<port>"
+    echo
+    echo "No API key is required."
+    echo
+    RIVEN_SCRAPING_COMET_URL="$(require_url "Enter Comet base URL")"
+    ;;
+  4)
+    RIVEN_SCRAPING_JACKETT_ENABLED=true
+    echo
+    echo "Jackett selected."
+    echo
+    echo "Example:"
+    echo "  • http://localhost:9117"
+    echo
+    echo "API Key location:"
+    echo "  Jackett Web UI → Top-right corner"
+    echo
+    RIVEN_SCRAPING_JACKETT_URL="$(require_url "Enter Jackett URL")"
+    RIVEN_SCRAPING_JACKETT_API_KEY="$(read_masked_non_empty "Enter Jackett API Key")"
+    ;;
+  5)
+    RIVEN_SCRAPING_ZILEAN_ENABLED=true
+    echo
+    echo "Zilean selected."
+    echo
+    echo "Examples:"
+    echo "  • Public: https://zilean.example.com"
+    echo "  • Local:  http://localhost:<port>"
+    echo
+    echo "No API key is required."
+    echo
+    RIVEN_SCRAPING_ZILEAN_URL="$(require_url "Enter Zilean base URL")"
+    ;;
+  *)
+    fail "Scraper selection REQUIRED"
+    ;;
+esac
 
 ############################################
 # SECRETS
@@ -763,100 +711,6 @@ case "$MEDIA_PROFILE" in
     ;;
 esac
 
-############################################
-# VALIDATION SUMMARY (CONFIRM BEFORE CONTINUE)
-############################################
-banner "Configuration Summary"
-debug_step "print configuration summary and collect confirmation"
-
-echo "Please review your configuration below:"
-echo ""
-debug "summary timezone=$TZ_SELECTED origin=$ORIGIN media_profile=$MEDIA_PROFILE media_url=http://$SERVER_IP:$MEDIA_PORT"
-debug "summary downloader_flags rd=${RIVEN_DOWNLOADERS_REAL_DEBRID_ENABLED:-unset} ad=${RIVEN_DOWNLOADERS_ALL_DEBRID_ENABLED:-unset} dl=${RIVEN_DOWNLOADERS_DEBRID_LINK_ENABLED:-unset}"
-debug "summary secrets_present media_api_key_set=$([[ -n "${MEDIA_API_KEY:-}" ]] && echo true || echo false) backend_api_key_set=$([[ -n "${BACKEND_API_KEY:-}" ]] && echo true || echo false) auth_secret_set=$([[ -n "${AUTH_SECRET:-}" ]] && echo true || echo false)"
-
-echo "🕒 Timezone"
-echo "  • $TZ_SELECTED"
-echo ""
-
-echo "🌍 Frontend Origin"
-echo "  • $ORIGIN"
-echo ""
-
-echo "🎬 Media Server"
-echo "  • Selected: $MEDIA_PROFILE"
-echo "  • URL: http://$SERVER_IP:$MEDIA_PORT"
-echo ""
-
-echo "⬇️ Downloader"
-if [[ "$RIVEN_DOWNLOADERS_REAL_DEBRID_ENABLED" == "true" ]]; then
-  echo "  • Real-Debrid"
-elif [[ "$RIVEN_DOWNLOADERS_ALL_DEBRID_ENABLED" == "true" ]]; then
-  echo "  • All-Debrid"
-elif [[ "$RIVEN_DOWNLOADERS_DEBRID_LINK_ENABLED" == "true" ]]; then
-  echo "  • Debrid-Link"
-else
-  echo "  • NONE (invalid)"
-fi
-echo ""
-
-echo "🔍 Scrapers Enabled"
-SCRAPER_COUNT=0
-
-if [[ "${RIVEN_SCRAPING_TORRENTIO_ENABLED:-false}" == "true" ]]; then
-  echo "  • Torrentio"
-  ((++SCRAPER_COUNT))
-fi
-
-if [[ "${RIVEN_SCRAPING_PROWLARR_ENABLED:-false}" == "true" ]]; then
-  echo "  • Prowlarr"
-  ((++SCRAPER_COUNT))
-fi
-
-if [[ "${RIVEN_SCRAPING_COMET_ENABLED:-false}" == "true" ]]; then
-  echo "  • Comet"
-  ((++SCRAPER_COUNT))
-fi
-
-if [[ "${RIVEN_SCRAPING_JACKETT_ENABLED:-false}" == "true" ]]; then
-  echo "  • Jackett"
-  ((++SCRAPER_COUNT))
-fi
-
-if [[ "${RIVEN_SCRAPING_ZILEAN_ENABLED:-false}" == "true" ]]; then
-  echo "  • Zilean"
-  ((++SCRAPER_COUNT))
-fi
-
-if [[ "$SCRAPER_COUNT" -eq 0 ]]; then
-  echo "  • NONE (invalid)"
-fi
-
-echo ""
-echo "📁 Paths"
-echo "  • Install Dir:  $INSTALL_DIR"
-echo "  • Backend Path: $BACKEND_PATH"
-echo "  • Mount Path:   $MOUNT_PATH"
-echo ""
-
-echo "👤 Ownership"
-echo "  • UID:GID $TARGET_UID:$TARGET_GID"
-echo ""
-
-echo "⚠️  IMPORTANT"
-echo "  • This will write configuration files"
-echo "  • Docker containers will be started"
-echo "  • Secrets will be generated automatically"
-echo ""
-
-read -rp "Continue with this configuration? [y/N]: " CONFIRM
-if [[ ! "${CONFIRM,,}" =~ ^y$ ]]; then
-  echo ""
-  echo "Installation aborted by user."
-  exit 1
-fi
-
-ok "Configuration confirmed"
 
 ############################################
 # WRITE .env (ONCE, NO SED)
@@ -958,7 +812,7 @@ ok ".env repaired and sanitized"
 # START RIVEN
 ############################################
 banner "Starting Riven"
-run_docker_compose_up_detached docker compose
+docker compose up -d
 ok "Riven started"
 
 banner "INSTALL COMPLETE"
