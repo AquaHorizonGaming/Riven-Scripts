@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+DEBUG_MODE=false
+if [[ "${1:-}" == "--debug" ]]; then
+  DEBUG_MODE=true
+  shift
+fi
+
 ############################################
 # CONSTANTS
 ############################################
@@ -181,7 +187,14 @@ log_warn()   { echo "[WARN]  $*"; }
 log_error()  { echo "[ERROR] $*"; }
 log_section(){ echo -e "\n========== $* ==========\n"; }
 
-trap 'log_error "Installer exited unexpectedly at line $LINENO"' ERR
+if [[ "$DEBUG_MODE" == "true" ]]; then
+  export PS4='+ [${BASH_SOURCE##*/}:${LINENO}:${FUNCNAME[0]:-main}] '
+  set -x
+  debug "Debug mode enabled"
+  debug "original_stdout_is_tty=$ORIGINAL_STDOUT_IS_TTY"
+fi
+
+trap 'rc=$?; cmd=${BASH_COMMAND:-unknown}; log_error "Installer exited unexpectedly at line $LINENO (rc=$rc, cmd: $cmd)"; debug "failure_context rc=$rc cmd=$cmd"; exit $rc' ERR
 
 log "Logging initialized"
 log "Log file: $LOG_FILE"
@@ -190,6 +203,7 @@ log "Log file: $LOG_FILE"
 # TIMEZONE (INSTALLER SAFE)
 ############################################
 banner "Timezone"
+debug_step "timezone detection and configuration"
 
 detect_timezone() {
   timedatectl show --property=Timezone --value 2>/dev/null \
@@ -214,6 +228,7 @@ ok "Timezone set: $TZ_SELECTED"
 # SYSTEM DEPS
 ############################################
 banner "System Dependencies"
+debug_step "system dependency verification"
 
 dpkg -s ca-certificates curl gnupg lsb-release openssl fuse3 >/dev/null 2>&1 \
   && ok "System dependencies already installed" \
@@ -261,6 +276,7 @@ ok "Detected user ownership: UID=$TARGET_UID GID=$TARGET_GID"
 # DOCKER
 ############################################
 banner "Docker"
+debug_step "docker installation check"
 
 if command -v docker >/dev/null 2>&1; then
   ok "Docker already installed"
@@ -751,9 +767,13 @@ esac
 # VALIDATION SUMMARY (CONFIRM BEFORE CONTINUE)
 ############################################
 banner "Configuration Summary"
+debug_step "print configuration summary and collect confirmation"
 
 echo "Please review your configuration below:"
 echo ""
+debug "summary timezone=$TZ_SELECTED origin=$ORIGIN media_profile=$MEDIA_PROFILE media_url=http://$SERVER_IP:$MEDIA_PORT"
+debug "summary downloader_flags rd=${RIVEN_DOWNLOADERS_REAL_DEBRID_ENABLED:-unset} ad=${RIVEN_DOWNLOADERS_ALL_DEBRID_ENABLED:-unset} dl=${RIVEN_DOWNLOADERS_DEBRID_LINK_ENABLED:-unset}"
+debug "summary secrets_present media_api_key_set=$([[ -n "${MEDIA_API_KEY:-}" ]] && echo true || echo false) backend_api_key_set=$([[ -n "${BACKEND_API_KEY:-}" ]] && echo true || echo false) auth_secret_set=$([[ -n "${AUTH_SECRET:-}" ]] && echo true || echo false)"
 
 echo "🕒 Timezone"
 echo "  • $TZ_SELECTED"
