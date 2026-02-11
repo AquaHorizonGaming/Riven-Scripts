@@ -14,7 +14,7 @@ RIVEN_COMPOSE_URL="https://raw.githubusercontent.com/AquaHorizonGaming/distribut
 
 DEFAULT_ORIGIN="http://localhost:3000"
 
-INSTALL_VERSION="v0.6.8"
+INSTALL_VERSION="v0.6"
 
 ############################################
 # HELPERS
@@ -536,24 +536,20 @@ case "$DL_SEL" in
 esac
 
 ############################################
-# SCRAPER SELECTION (MULTI-SELECT, REQUIRED)
+# SCRAPER SELECTION (REQUIRED)
 ############################################
 banner "Scraper Selection (REQUIRED)"
 
-echo "Select one or more scraping backends."
-echo "Enter numbers separated by spaces or commas (example: 1 3 5 or 1,3,5)"
-echo ""
+echo "Choose ONE scraping backend:"
+echo
 echo "1) Torrentio   (No config required)"
 echo "2) Prowlarr    (Local instance only)"
 echo "3) Comet       (Public or self-hosted)"
 echo "4) Jackett     (Local instance only)"
 echo "5) Zilean      (Public or self-hosted)"
-echo ""
+echo
 
-read -rp "Select one or more: " SCR_SEL_RAW
-
-# Normalize commas → spaces, collapse whitespace
-SCR_SEL="$(echo "$SCR_SEL_RAW" | tr ',' ' ' | xargs)"
+read -rp "Select ONE: " SCR_SEL
 
 # Reset all flags
 RIVEN_SCRAPING_TORRENTIO_ENABLED=false
@@ -562,97 +558,82 @@ RIVEN_SCRAPING_COMET_ENABLED=false
 RIVEN_SCRAPING_JACKETT_ENABLED=false
 RIVEN_SCRAPING_ZILEAN_ENABLED=false
 
-# Reset config values
 RIVEN_SCRAPING_PROWLARR_URL=""
 RIVEN_SCRAPING_PROWLARR_API_KEY=""
+
 RIVEN_SCRAPING_COMET_URL=""
+
 RIVEN_SCRAPING_JACKETT_URL=""
 RIVEN_SCRAPING_JACKETT_API_KEY=""
+
 RIVEN_SCRAPING_ZILEAN_URL=""
 
-VALID_SELECTION=false
-
-for sel in $SCR_SEL; do
-  case "$sel" in
-    1)
-      RIVEN_SCRAPING_TORRENTIO_ENABLED=true
-      VALID_SELECTION=true
-      log "Torrentio enabled"
-      ;;
-    2)
-      RIVEN_SCRAPING_PROWLARR_ENABLED=true
-      VALID_SELECTION=true
-
-      echo ""
-      echo "Prowlarr configuration"
-      echo "Example: http://localhost:9696"
-      echo "API Key: Settings → General → API Key"
-
-      RIVEN_SCRAPING_PROWLARR_URL="$(require_url "Enter Prowlarr URL")"
-      RIVEN_SCRAPING_PROWLARR_API_KEY="$(read_masked_non_empty "Enter Prowlarr API Key")"
-
-      log "Prowlarr enabled"
-      ;;
-    3)
-      RIVEN_SCRAPING_COMET_ENABLED=true
-      VALID_SELECTION=true
-
-      echo ""
-      echo "Comet configuration"
-      echo "Examples:"
-      echo " • https://cometfortheweebs.midnightignite.me"
-      echo " • http://localhost:<port>"
-
-      RIVEN_SCRAPING_COMET_URL="$(require_url "Enter Comet base URL")"
-
-      log "Comet enabled"
-      ;;
-    4)
-      RIVEN_SCRAPING_JACKETT_ENABLED=true
-      VALID_SELECTION=true
-
-      echo ""
-      echo "Jackett configuration"
-      echo "Example: http://localhost:9117"
-      echo "API Key: Jackett Web UI → Top-right corner"
-
-      RIVEN_SCRAPING_JACKETT_URL="$(require_url "Enter Jackett URL")"
-      RIVEN_SCRAPING_JACKETT_API_KEY="$(read_masked_non_empty "Enter Jackett API Key")"
-
-      log "Jackett enabled"
-      ;;
-    5)
-      RIVEN_SCRAPING_ZILEAN_ENABLED=true
-      VALID_SELECTION=true
-
-      echo ""
-      echo "Zilean configuration"
-      echo "Examples:"
-      echo " • https://zilean.example.com"
-      echo " • http://localhost:<port>"
-
-      RIVEN_SCRAPING_ZILEAN_URL="$(require_url "Enter Zilean base URL")"
-
-      log "Zilean enabled"
-      ;;
-    *)
-      warn "Invalid scraper option ignored: $sel"
-      ;;
-  esac
-done
-
-if [[ "$VALID_SELECTION" != "true" ]]; then
-  fail "At least one scraper must be selected"
-fi
-
-echo ""
-echo "Enabled scrapers:"
-[[ "$RIVEN_SCRAPING_TORRENTIO_ENABLED" == "true" ]] && echo " • Torrentio"
-[[ "$RIVEN_SCRAPING_PROWLARR_ENABLED" == "true" ]] && echo " • Prowlarr"
-[[ "$RIVEN_SCRAPING_COMET_ENABLED" == "true" ]] && echo " • Comet"
-[[ "$RIVEN_SCRAPING_JACKETT_ENABLED" == "true" ]] && echo " • Jackett"
-[[ "$RIVEN_SCRAPING_ZILEAN_ENABLED" == "true" ]] && echo " • Zilean"
-echo ""
+case "$SCR_SEL" in
+  1)
+    RIVEN_SCRAPING_TORRENTIO_ENABLED=true
+    echo
+    echo "Torrentio selected."
+    echo "• Uses public Torrentio endpoint"
+    echo "• No configuration required"
+    ;;
+  2)
+    RIVEN_SCRAPING_PROWLARR_ENABLED=true
+    echo
+    echo "Prowlarr selected."
+    echo
+    echo "Example:"
+    echo "  • http://localhost:9696"
+    echo
+    echo "API Key location:"
+    echo "  Settings → General → API Key"
+    echo
+    RIVEN_SCRAPING_PROWLARR_URL="$(require_url "Enter Prowlarr URL")"
+    RIVEN_SCRAPING_PROWLARR_API_KEY="$(read_masked_non_empty "Enter Prowlarr API Key")"
+    ;;
+  3)
+    RIVEN_SCRAPING_COMET_ENABLED=true
+    echo
+    echo "Comet selected."
+    echo
+    echo "Examples:"
+    echo "  • Public: https://cometfortheweebs.midnightignite.me"
+    echo "  • Local:  http://localhost:<port>"
+    echo
+    echo "No API key is required."
+    echo
+    RIVEN_SCRAPING_COMET_URL="$(require_url "Enter Comet base URL")"
+    ;;
+  4)
+    RIVEN_SCRAPING_JACKETT_ENABLED=true
+    echo
+    echo "Jackett selected."
+    echo
+    echo "Example:"
+    echo "  • http://localhost:9117"
+    echo
+    echo "API Key location:"
+    echo "  Jackett Web UI → Top-right corner"
+    echo
+    RIVEN_SCRAPING_JACKETT_URL="$(require_url "Enter Jackett URL")"
+    RIVEN_SCRAPING_JACKETT_API_KEY="$(read_masked_non_empty "Enter Jackett API Key")"
+    ;;
+  5)
+    RIVEN_SCRAPING_ZILEAN_ENABLED=true
+    echo
+    echo "Zilean selected."
+    echo
+    echo "Examples:"
+    echo "  • Public: https://zilean.example.com"
+    echo "  • Local:  http://localhost:<port>"
+    echo
+    echo "No API key is required."
+    echo
+    RIVEN_SCRAPING_ZILEAN_URL="$(require_url "Enter Zilean base URL")"
+    ;;
+  *)
+    fail "Scraper selection REQUIRED"
+    ;;
+esac
 
 ############################################
 # SECRETS
@@ -730,96 +711,6 @@ case "$MEDIA_PROFILE" in
     ;;
 esac
 
-############################################
-# VALIDATION SUMMARY (CONFIRM BEFORE CONTINUE)
-############################################
-banner "Configuration Summary"
-
-echo "Please review your configuration below:"
-echo ""
-
-echo "🕒 Timezone"
-echo "  • $TZ_SELECTED"
-echo ""
-
-echo "🌍 Frontend Origin"
-echo "  • $ORIGIN"
-echo ""
-
-echo "🎬 Media Server"
-echo "  • Selected: $MEDIA_PROFILE"
-echo "  • URL: http://$SERVER_IP:$MEDIA_PORT"
-echo ""
-
-echo "⬇️ Downloader"
-if [[ "$RIVEN_DOWNLOADERS_REAL_DEBRID_ENABLED" == "true" ]]; then
-  echo "  • Real-Debrid"
-elif [[ "$RIVEN_DOWNLOADERS_ALL_DEBRID_ENABLED" == "true" ]]; then
-  echo "  • All-Debrid"
-elif [[ "$RIVEN_DOWNLOADERS_DEBRID_LINK_ENABLED" == "true" ]]; then
-  echo "  • Debrid-Link"
-else
-  echo "  • NONE (invalid)"
-fi
-echo ""
-
-echo "🔍 Scrapers Enabled"
-SCRAPER_COUNT=0
-
-if [[ "${RIVEN_SCRAPING_TORRENTIO_ENABLED:-false}" == "true" ]]; then
-  echo "  • Torrentio"
-  ((SCRAPER_COUNT++))
-fi
-
-if [[ "${RIVEN_SCRAPING_PROWLARR_ENABLED:-false}" == "true" ]]; then
-  echo "  • Prowlarr"
-  ((SCRAPER_COUNT++))
-fi
-
-if [[ "${RIVEN_SCRAPING_COMET_ENABLED:-false}" == "true" ]]; then
-  echo "  • Comet"
-  ((SCRAPER_COUNT++))
-fi
-
-if [[ "${RIVEN_SCRAPING_JACKETT_ENABLED:-false}" == "true" ]]; then
-  echo "  • Jackett"
-  ((SCRAPER_COUNT++))
-fi
-
-if [[ "${RIVEN_SCRAPING_ZILEAN_ENABLED:-false}" == "true" ]]; then
-  echo "  • Zilean"
-  ((SCRAPER_COUNT++))
-fi
-
-if [[ "$SCRAPER_COUNT" -eq 0 ]]; then
-  echo "  • NONE (invalid)"
-fi
-
-echo ""
-echo "📁 Paths"
-echo "  • Install Dir:  $INSTALL_DIR"
-echo "  • Backend Path: $BACKEND_PATH"
-echo "  • Mount Path:   $MOUNT_PATH"
-echo ""
-
-echo "👤 Ownership"
-echo "  • UID:GID $TARGET_UID:$TARGET_GID"
-echo ""
-
-echo "⚠️  IMPORTANT"
-echo "  • This will write configuration files"
-echo "  • Docker containers will be started"
-echo "  • Secrets will be generated automatically"
-echo ""
-
-read -rp "Continue with this configuration? [y/N]: " CONFIRM
-if [[ ! "${CONFIRM,,}" =~ ^y$ ]]; then
-  echo ""
-  echo "Installation aborted by user."
-  exit 1
-fi
-
-ok "Configuration confirmed"
 
 ############################################
 # WRITE .env (ONCE, NO SED)
