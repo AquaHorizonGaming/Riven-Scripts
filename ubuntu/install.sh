@@ -24,6 +24,23 @@ ok()   { printf "✔  %s\n" "$1"; }
 warn() { printf "⚠  %s\n" "$1"; }
 fail() { printf "✖  %s\n" "$1"; exit 1; }
 
+# Capture whether the original stdout is a terminal before logging redirection.
+exec 3>&1
+ORIGINAL_STDOUT_IS_TTY=false
+[[ -t 3 ]] && ORIGINAL_STDOUT_IS_TTY=true
+
+run_docker_compose_up_detached() {
+  local -a compose_cmd=("$@")
+
+  if [[ "$ORIGINAL_STDOUT_IS_TTY" == "true" ]]; then
+    # Preserve TTY behavior so pull progress updates in-place.
+    "${compose_cmd[@]}" up -d --pull always 1>&3 2>&3
+  else
+    # Keep normal output in CI / non-interactive shells.
+    "${compose_cmd[@]}" up -d --pull always
+  fi
+}
+
 ############################################
 # REQUIRED NON-EMPTY (SILENT)
 # (keep for non-secret values if needed)
@@ -392,7 +409,7 @@ esac
 # START MEDIA SERVER 
 ############################################
 banner "Starting Media Server"
-docker compose -f docker-compose.media.yml --profile "$MEDIA_PROFILE" up -d
+run_docker_compose_up_detached docker compose -f docker-compose.media.yml --profile "$MEDIA_PROFILE"
 ok "Media server started"
 
 SERVER_IP="$(hostname -I | awk '{print $1}')"
@@ -768,27 +785,27 @@ SCRAPER_COUNT=0
 
 if [[ "${RIVEN_SCRAPING_TORRENTIO_ENABLED:-false}" == "true" ]]; then
   echo "  • Torrentio"
-  ((SCRAPER_COUNT++))
+  ((++SCRAPER_COUNT))
 fi
 
 if [[ "${RIVEN_SCRAPING_PROWLARR_ENABLED:-false}" == "true" ]]; then
   echo "  • Prowlarr"
-  ((SCRAPER_COUNT++))
+  ((++SCRAPER_COUNT))
 fi
 
 if [[ "${RIVEN_SCRAPING_COMET_ENABLED:-false}" == "true" ]]; then
   echo "  • Comet"
-  ((SCRAPER_COUNT++))
+  ((++SCRAPER_COUNT))
 fi
 
 if [[ "${RIVEN_SCRAPING_JACKETT_ENABLED:-false}" == "true" ]]; then
   echo "  • Jackett"
-  ((SCRAPER_COUNT++))
+  ((++SCRAPER_COUNT))
 fi
 
 if [[ "${RIVEN_SCRAPING_ZILEAN_ENABLED:-false}" == "true" ]]; then
   echo "  • Zilean"
-  ((SCRAPER_COUNT++))
+  ((++SCRAPER_COUNT))
 fi
 
 if [[ "$SCRAPER_COUNT" -eq 0 ]]; then
@@ -921,7 +938,7 @@ ok ".env repaired and sanitized"
 # START RIVEN
 ############################################
 banner "Starting Riven"
-docker compose up -d
+run_docker_compose_up_detached docker compose
 ok "Riven started"
 
 banner "INSTALL COMPLETE"
@@ -1011,4 +1028,3 @@ echo "  • Riven started after config complete"
 echo
 
 ok "Riven is ready 🚀"
-
