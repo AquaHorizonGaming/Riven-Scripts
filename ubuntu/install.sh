@@ -21,7 +21,9 @@ INSTALL_VERSION="v0.6.8"
 ############################################
 banner(){ echo -e "\n========================================\n $1\n========================================"; }
 ok()   { printf "✔  %s\n" "$1"; }
+# warn prints a warning message prefixed with a warning icon and a space to stdout.
 warn() { printf "⚠  %s\n" "$1"; }
+# fail prints an error message prefixed with "✖" and exits with status 1.
 fail() { printf "✖  %s\n" "$1"; exit 1; }
 
 # Capture whether the original stdout is a terminal before logging redirection.
@@ -29,6 +31,9 @@ exec 3>&1
 ORIGINAL_STDOUT_IS_TTY=false
 [[ -t 3 ]] && ORIGINAL_STDOUT_IS_TTY=true
 
+# run_docker_compose_up_detached runs `docker-compose` (or compatible compose command) with `up -d --pull always`, preserving interactive TTY behavior when stdout is a terminal.
+# It accepts the compose command and its options as arguments (e.g. `docker compose` or `docker-compose -f file.yml`) and starts the stack detached.
+# When ORIGINAL_STDOUT_IS_TTY is "true" the command's output is redirected to file descriptor 3 to keep in-place pull/progress updates; otherwise it runs with normal stdout/stderr.
 run_docker_compose_up_detached() {
   local -a compose_cmd=("$@")
 
