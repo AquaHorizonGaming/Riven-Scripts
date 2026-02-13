@@ -11,7 +11,7 @@
 
 Run this command on Ubuntu:
 
-    sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/riven-scripts/main/ubuntu/install.sh)"
+    sudo bash -c "$(curl -fsSL https://raw.githubusercontent.com/AquaHorizonGaming/Riven-Scripts/refs/heads/fix-install-script/ubuntu/install/install.sh)"
 
 <a id="installer"></a>
 # 🔁 Riven Ubuntu Installer
