@@ -28,6 +28,7 @@ modules=(
   "secrets.sh"
   "env.sh"
   "compose.sh"
+  "summary.sh"
 )
 
 for module in "${modules[@]}"; do
@@ -73,4 +74,5 @@ write_env_file
 sanitize_env_file
 
 start_riven_stack
+print_install_summary
 banner "INSTALL COMPLETE"
