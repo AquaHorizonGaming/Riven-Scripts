@@ -63,9 +63,12 @@ ensure_riven_rshared_mount
 
 download_compose_files
 select_media_server
-select_seer_install
 if [[ "$MEDIA_SERVER" != "external" ]]; then
   start_media_server
+fi
+select_seer_install
+if [[ "$INSTALL_SEER" == "true" ]]; then
+  setup_seer
 fi
 collect_media_auth
 configure_origin
@@ -78,9 +81,7 @@ write_env_file
 sanitize_env_file
 
 start_riven_stack
-if [[ "$INSTALL_SEER" == "true" ]]; then
-  setup_seer
-fi
+
 print_install_summary
 if [[ "$MEDIA_SERVER" == "external" ]]; then
   print_external_media_instructions
