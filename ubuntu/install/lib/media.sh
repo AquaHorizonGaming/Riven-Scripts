@@ -123,7 +123,6 @@ Riven mounts media to:
 
     /mnt/riven/mount
 
-You MUST:
 
 • If Jellyfin is running directly on the host:
   Add /mnt/riven/mount as a library path in Jellyfin
@@ -174,8 +173,6 @@ IMPORTANT: LIBRARY PATH
 Riven mounts media to:
 
     /mnt/riven/mount
-
-You MUST:
 
 • If Emby is running directly on the host:
   Add /mnt/riven/mount as a library folder
@@ -228,7 +225,6 @@ Riven mounts media to:
 
     /mnt/riven/mount
 
-You MUST:
 
 • If Plex is running directly on the host:
   Add /mnt/riven/mount as a library location in Plex
