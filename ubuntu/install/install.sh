@@ -25,6 +25,7 @@ modules=(
   "media.sh"
   "downloader.sh"
   "scrapers.sh"
+  "seerr.sh"
   "secrets.sh"
   "env.sh"
   "compose.sh"
@@ -62,6 +63,7 @@ ensure_riven_rshared_mount
 
 download_compose_files
 select_media_server
+select_seerr_install
 if [[ "$MEDIA_SERVER" != "external" ]]; then
   start_media_server
 fi
@@ -76,6 +78,9 @@ write_env_file
 sanitize_env_file
 
 start_riven_stack
+if [[ "$INSTALL_SEERR" == "true" ]]; then
+  setup_seerr
+fi
 print_install_summary
 if [[ "$MEDIA_SERVER" == "external" ]]; then
   print_external_media_instructions
