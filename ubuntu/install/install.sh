@@ -62,7 +62,9 @@ ensure_riven_rshared_mount
 
 download_compose_files
 select_media_server
-start_media_server
+if [[ "$MEDIA_SERVER" != "external" ]]; then
+  start_media_server
+fi
 collect_media_auth
 configure_origin
 select_downloader
@@ -75,4 +77,7 @@ sanitize_env_file
 
 start_riven_stack
 print_install_summary
+if [[ "$MEDIA_SERVER" == "external" ]]; then
+  print_external_media_instructions
+fi
 banner "INSTALL COMPLETE"

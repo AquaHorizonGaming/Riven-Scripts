@@ -12,6 +12,9 @@ init_installer_state() {
   COMPOSE_BASE_URL="${BASE_URL%/install}"
   MEDIA_COMPOSE_URL="$COMPOSE_BASE_URL/docker-compose.media.yml"
   RIVEN_COMPOSE_URL="$COMPOSE_BASE_URL/docker-compose.yml"
+
+  MEDIA_SERVER=''
+  EXTERNAL_MEDIA_TYPE=''
 }
 
 print_installer_version() {

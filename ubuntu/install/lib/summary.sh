@@ -48,6 +48,11 @@ resolve_selected_scrapers() {
 resolve_media_address() {
   local server_ip="$1"
 
+  if [[ "${MEDIA_SERVER:-managed}" == 'external' ]]; then
+    printf 'Existing server (not deployed by installer)'
+    return
+  fi
+
   case "${MEDIA_PROFILE:-}" in
     jellyfin)
       printf 'http://%s:8096' "$server_ip"
@@ -91,7 +96,11 @@ print_install_summary() {
   fi
 
   riven_access_url="http://$server_ip:3000"
-  media_profile_name="${MEDIA_PROFILE:-Unknown}"
+  if [[ "${MEDIA_SERVER:-managed}" == 'external' ]]; then
+    media_profile_name="Existing ${EXTERNAL_MEDIA_TYPE:-media} server"
+  else
+    media_profile_name="${MEDIA_PROFILE:-Unknown}"
+  fi
   media_access_url="$(resolve_media_address "$server_ip")"
   downloader="$(resolve_selected_downloader)"
   scrapers="$(resolve_selected_scrapers)"
