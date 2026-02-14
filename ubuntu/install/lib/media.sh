@@ -125,10 +125,27 @@ Riven mounts media to:
 
 You MUST:
 
-• Add /mnt/riven/mount as a library path in Jellyfin
-• OR if running in Docker, add this volume mapping:
+• If Jellyfin is running directly on the host:
+  Add /mnt/riven/mount as a library path in Jellyfin
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT: DOCKER USERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If your media server runs inside Docker,
+you MUST add this volume mapping to your container:
 
     - /mnt/riven/mount:/media
+
+Explanation:
+
+• /mnt/riven/mount  → Host machine path (where Riven stores media)
+• /media            → Path INSIDE the container
+
+After adding the mapping:
+• Restart your container
+• Add /media as your library folder
+• Rescan your libraries
 
 Then rescan your Jellyfin libraries.
 
@@ -160,10 +177,27 @@ Riven mounts media to:
 
 You MUST:
 
-• Add /mnt/riven/mount as a library folder
-• OR if using Docker, map:
+• If Emby is running directly on the host:
+  Add /mnt/riven/mount as a library folder
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT: DOCKER USERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If your media server runs inside Docker,
+you MUST add this volume mapping to your container:
 
     - /mnt/riven/mount:/media
+
+Explanation:
+
+• /mnt/riven/mount  → Host machine path (where Riven stores media)
+• /media            → Path INSIDE the container
+
+After adding the mapping:
+• Restart your container
+• Add /media as your library folder
+• Rescan your libraries
 
 Then refresh your libraries.
 
@@ -196,10 +230,27 @@ Riven mounts media to:
 
 You MUST:
 
-• Add /mnt/riven/mount as a library location in Plex
-• OR if running Plex in Docker, map:
+• If Plex is running directly on the host:
+  Add /mnt/riven/mount as a library location in Plex
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IMPORTANT: DOCKER USERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If your media server runs inside Docker,
+you MUST add this volume mapping to your container:
 
     - /mnt/riven/mount:/media
+
+Explanation:
+
+• /mnt/riven/mount  → Host machine path (where Riven stores media)
+• /media            → Path INSIDE the container
+
+After adding the mapping:
+• Restart your container
+• Add /media as your library folder
+• Rescan your libraries
 
 Then rescan libraries.
 
